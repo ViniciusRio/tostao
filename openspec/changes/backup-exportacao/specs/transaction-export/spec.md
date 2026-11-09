@@ -44,7 +44,7 @@ O CSV SHALL ter uma linha de cabeçalho e uma linha por transação, em ordem cr
 - **THEN** a coluna Categoria fica vazia
 
 ### Requirement: Textos seguros no CSV
-Campos de texto SHALL ser escapados para que ponto e vírgula, aspas e quebras de linha não quebrem as colunas. Textos que começam com `=`, `+`, `-`, `@`, tabulação ou retorno de carro MUST ser prefixados com apóstrofo, para que a planilha não os execute como fórmula.
+Campos de texto SHALL ser escapados para que ponto e vírgula, aspas e quebras de linha não quebrem as colunas. Textos cujo primeiro caractere, ignorando espaços e quebras de linha iniciais, seja `=`, `+`, `-` ou `@`, e textos que começam com tabulação ou retorno de carro, MUST ser prefixados com apóstrofo, para que a planilha não os execute como fórmula.
 
 #### Scenario: Observação com quebra de linha
 - **WHEN** a observação é `Pago em 2x; "à vista" não` com uma quebra de linha
@@ -53,3 +53,7 @@ Campos de texto SHALL ser escapados para que ponto e vírgula, aspas e quebras d
 #### Scenario: Título parecido com fórmula
 - **WHEN** o título é `=SOMA(A1:A9)`
 - **THEN** o campo sai como `'=SOMA(A1:A9)`
+
+#### Scenario: Fórmula depois de espaços
+- **WHEN** a observação é `  +55 11 9999` (com espaços antes)
+- **THEN** o campo sai com apóstrofo no início
