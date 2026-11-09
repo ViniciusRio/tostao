@@ -53,11 +53,10 @@ object Reports {
     private fun slices(txs: List<Transaction>, data: FinanceData): List<CategorySlice> {
         val total = txs.sumOf { it.amountCents }
         if (total == 0L) return emptyList()
-        return txs.groupBy { it.categoryId?.let(data.categoryById::get) }
-            .map { (cat, list) ->
-                val sum = list.sumOf { it.amountCents }
-                CategorySlice(cat, sum, (sum * 100 / total).toInt())
-            }
-            .sortedByDescending { it.totalCents }
+        val sums = txs.groupBy { it.categoryId?.let(data.categoryById::get) }
+            .map { (cat, list) -> cat to list.sumOf { it.amountCents } }
+            .sortedByDescending { it.second }
+        val pct = Charts.percents(sums.map { it.second })
+        return sums.mapIndexed { i, (cat, sum) -> CategorySlice(cat, sum, pct[i]) }
     }
 }
