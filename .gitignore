@@ -1,0 +1,11 @@
+# Engenharia reversa: APKs de terceiros, capturas com dados pessoais e evidências locais
+/re/
+.gradle/
+build/
+/local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+.DS_Store
+/screenshots-local/

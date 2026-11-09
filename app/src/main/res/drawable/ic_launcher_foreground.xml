@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Três barras ascendentes: marca provisória, sem relação com a marca de terceiros. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M36,64h9v12h-9z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M50,52h9v24h-9z" />
+    <path android:fillColor="#FFB8F2D6" android:pathData="M64,38h9v38h-9z" />
+</vector>
