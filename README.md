@@ -12,7 +12,7 @@ App Android de finanças pessoais, **local e offline**, em Kotlin + Jetpack Comp
 - **Transações**: receita, despesa e transferência; edição; exclusão com **Desfazer**; lista por mês agrupada por dia ("Hoje", "Ontem"); filtros por tipo e conta; **busca sem acento** em todos os meses.
 - **Planejados**: contas fixas e recorrências (dias/semanas/meses/anos, com data final). Só a **próxima ocorrência** aparece, sem poluir o extrato. Pagar/Pular com Desfazer.
 - **Orçamentos** mensais por categoria ou "todas as despesas", com estados normal/atenção/excedido em texto.
-- **Relatórios** do mês sem precisar de filtro: totais, resultado, ranking por categoria e comparação com o mês anterior.
+- **Relatórios** do mês sem precisar de filtro: totais, resultado, **gráfico de pizza por categoria** (toque para ver valor e percentual), **evolução dos últimos 6 meses** em barras, ranking por categoria e comparação com o mês anterior.
 - **Início**: saldo total, **saldo previsto no fim do mês**, receitas/despesas do mês, atrasados e próximos 30 dias, recentes. Botão para **ocultar valores**.
 
 ## Principais melhorias em relação ao original
