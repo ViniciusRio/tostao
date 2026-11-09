@@ -36,5 +36,5 @@
 ## 5. Verificação
 
 - [x] 5.1 Testes unitários, lint e build de debug passando
-- [ ] 5.2 Instalar no A26, percorrer os fluxos principais e capturar telas
+- [x] 5.2 Instalar no A26, percorrer os fluxos principais e capturar telas
 - [x] 5.3 Revisão do Codex (somente leitura) e correções

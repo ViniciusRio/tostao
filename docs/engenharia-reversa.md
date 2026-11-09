@@ -16,10 +16,15 @@ Referência estudada: **Ivy Wallet** (`com.ivy.wallet`), versão `2026.10.22` (v
 | Esquema do banco Room | leitura das strings `CREATE TABLE` do `classes.dex` | `re/evidence/dex-sql.txt` |
 | Textos da interface | `aapt2 dump resources` | `re/evidence/strings-en.txt` |
 | Observação em execução | REA `start-adb-app`, `capture-adb-screen`, `uiautomator dump` | `re/screens/*/screen.png` |
+| Inventário estático via JADX (8.168 classes, 2.220 recursos, cobertura completa) | REA `inspect-android-package` + `jadx-headless-mcp` 0.7.1 | `re/evidence/android-package.json` |
+| Classes `com.ivy.*` com nome preservado (34) | REA `search-android-classes` | `re/evidence/classes-ivy.json` |
+| Membros de `IntervalType` (DAY, WEEK, MONTH, YEAR) | REA `inspect-android-class` | `re/evidence/class-IntervalType.json` |
 
 O `base.apk` tem SHA-256 `f68b911864094d94de66401d0f152eccb4cd625497ed7f88b9ba383278e60b30`.
 
-Limitações: `inspect-android-package`, `search-android-classes` e `inspect-android-method` do REA exigem o JAR `jadx-headless-mcp` 0.7.1, que não foi instalado (download de binário externo não autorizado nesta sessão). Por isso **não houve decompilação de métodos**. O código está ofuscado por R8 (só ~30 classes `com.ivy.*` mantêm nome). As conclusões vêm do manifesto, do esquema SQL, dos textos e da navegação no aparelho.
+Ferramentas externas: `jadx-headless-mcp` 0.7.1 (SHA-256 `6e5eacf5…ff75`) e Apktool 2.12.1 (SHA-256 `66cf4524…eafa`), em `~/.local/share/rea-tools/`, fora do repositório.
+
+Limitações: o código está ofuscado por R8; só 34 classes `com.ivy.*` mantêm nome (entidades Room, enums de modelo, widgets, `RootActivity`). Elas confirmam o esquema e as unidades de recorrência que adotamos. **Não decompilamos métodos** para reimplementar lógica: o app foi escrito a partir das specs e do comportamento observado. As demais conclusões vêm do manifesto, do esquema SQL, dos textos e da navegação no aparelho.
 
 A pasta `re/` (APKs, capturas com dados financeiros pessoais, evidências) está no `.gitignore` e não é publicada.
 
