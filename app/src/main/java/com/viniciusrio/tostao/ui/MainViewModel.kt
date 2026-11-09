@@ -37,6 +37,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -86,6 +88,9 @@ class MainViewModel(
 
     /** Aumenta a cada restauração; desfazer de antes dela não vale mais. */
     private var dataEpoch = 0
+
+    /** Serializa desfazer e restauração: o desfazer confere o epoch já dentro do lock, logo antes de escrever. */
+    private val writeLock = Mutex()
 
     private val _backupState = MutableStateFlow(transfer.backupState())
     val backupState = _backupState.asStateFlow()
@@ -147,9 +152,10 @@ class MainViewModel(
         val valid = _pendingRestore.value ?: return
         _pendingRestore.value = null
         runOp(DataOp.Restore) {
-            val o = transfer.restore(valid)
+            val o = writeLock.withLock {
+                transfer.restore(valid).also { if (it is TransferOutcome.Ok) dataEpoch++ }
+            }
             if (o is TransferOutcome.Ok) {
-                dataEpoch++
                 backStack.clear(); backStack.add(Route.Home)
             }
             report(o)
@@ -218,8 +224,10 @@ class MainViewModel(
 
     fun runUndo(m: UiMessage) {
         consumeMessage(m.id)
-        if (m.epoch != dataEpoch) return
-        m.undo?.let { u -> viewModelScope.launch { u() } }
+        val u = m.undo ?: return
+        viewModelScope.launch {
+            writeLock.withLock { if (m.epoch == dataEpoch) u() }
+        }
     }
 
     fun newId() = repo.newId()

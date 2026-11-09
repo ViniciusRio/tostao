@@ -163,8 +163,9 @@ private enum class PeriodChoice(val label: String) { All("Tudo"), Year("Este ano
 private fun ExportSheet(vm: MainViewModel, data: FinanceData, onClose: () -> Unit) {
     val today = vm.today()
     var choice by rememberSaveable { mutableStateOf(PeriodChoice.Month) }
-    var start by remember { mutableStateOf(today.withDayOfMonth(1)) }
-    var end by remember { mutableStateOf(today) }
+    // Saveable: girar a tela com o seletor de arquivo aberto não pode trocar o período escolhido.
+    var start by rememberSaveable { mutableStateOf(today.withDayOfMonth(1)) }
+    var end by rememberSaveable { mutableStateOf(today) }
     val period: ExportPeriod = when (choice) {
         PeriodChoice.All -> ExportPeriod.All
         PeriodChoice.Year -> ExportPeriod.Year(today.year)

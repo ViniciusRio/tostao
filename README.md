@@ -14,6 +14,8 @@ App Android de finanças pessoais, **local e offline**, em Kotlin + Jetpack Comp
 - **Orçamentos** mensais por categoria ou "todas as despesas", com estados normal/atenção/excedido em texto.
 - **Relatórios** do mês sem precisar de filtro: totais, resultado, **gráfico de pizza por categoria** (toque para ver valor e percentual), **evolução dos últimos 6 meses** em barras, ranking por categoria e comparação com o mês anterior.
 - **Início**: saldo total, **saldo previsto no fim do mês**, receitas/despesas do mês, atrasados e próximos 30 dias, recentes. Botão para **ocultar valores**.
+- **Backup e restauração** em arquivo JSON salvo onde você quiser (Drive, pasta Downloads, cartão), sem pedir permissão de armazenamento. A restauração valida o arquivo inteiro antes e troca os dados numa única transação: arquivo inválido não apaga nada. Lembrete discreto na Início quando o backup fica antigo.
+- **Exportação CSV** das transações por período (tudo, ano, mês ou intervalo), no padrão brasileiro (`;`, vírgula decimal, UTF-8), pronta para Excel e Google Planilhas.
 
 ## Principais melhorias em relação ao original
 
@@ -47,6 +49,12 @@ adb install --no-streaming -r app/build/outputs/apk/debug/app-debug.apk
 
 Requer JDK 17+ e Android SDK 36. minSdk 26.
 
-## Fora do escopo do MVP
+## Seus dados
 
-Empréstimos, várias moedas, tags, importação/exportação CSV, widgets, bloqueio biométrico, lembretes e backup/sincronização. Os dados ficam só no aparelho (`allowBackup=false`): desinstalar apaga tudo.
+Os dados ficam só no aparelho (`allowBackup=false`): nada vai para nuvem nem conta, e desinstalar o app apaga tudo. Para não perder nada, use **Configurações → Fazer backup** e guarde o arquivo fora do aparelho.
+
+Para levar os dados para outro celular: instale o Tostão nele, abra **Configurações → Restaurar backup** e escolha o arquivo. A restauração **substitui** tudo o que existir no app novo. O arquivo de backup e o CSV **não têm senha**: guarde-os num local de confiança.
+
+## Fora do escopo
+
+Empréstimos, várias moedas, tags, importação CSV, widgets, bloqueio biométrico, sincronização e backup criptografado.

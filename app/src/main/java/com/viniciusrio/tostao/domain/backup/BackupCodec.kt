@@ -41,8 +41,6 @@ object BackupCodec {
     /** Teto de tamanho, igual na leitura e na geração, para o app nunca gerar um backup que recusaria. */
     const val MAX_BYTES = 50L * 1024 * 1024
 
-    /** Ajustes de saldo podem passar do limite comum: a diferença entre dois saldos não é limitada. */
-    const val MAX_ADJUSTMENT_CENTS = 1000 * Money.MAX_CENTS
     const val MAX_CONSUMED = 200_000
     private val MIN_DATE = LocalDate.of(1900, 1, 1)
     private val MAX_DATE = LocalDate.of(2200, 12, 31)
@@ -166,7 +164,8 @@ object BackupCodec {
 
             val transactions = d.transactions.mapIndexed { i, t ->
                 val type = TxType.entries.firstOrNull { it.name == t.type } ?: fail("Transação", i, "tipo desconhecido")
-                val max = if (t.isAdjustment) MAX_ADJUSTMENT_CENTS else Money.MAX_CENTS
+                // Ajustes podem passar do limite comum: a diferença entre dois saldos não é limitada.
+                val max = if (t.isAdjustment) Long.MAX_VALUE else Money.MAX_CENTS
                 if (t.amountCents !in 1..max) fail("Transação", i, "valor fora do limite")
                 if (t.accountId !in accountIds) fail("Transação", i, "conta inexistente")
                 if (t.title.length > Limits.TITLE) fail("Transação", i, "título longo demais")
@@ -205,14 +204,14 @@ object BackupCodec {
                 }
                 if (r.consumedOccurrences !in 0..MAX_CONSUMED) fail(what, i, "progresso inválido")
                 val rule = PlannedRule(r.id, type, r.amountCents, r.accountId, r.categoryId, r.title, start, unit, r.interval, end, r.consumedOccurrences)
-                val next = try {
+                // Só importa que dê para calcular: uma regra a cada 99 anos já paga pode vencer depois de 2200.
+                try {
                     Recurrence.nextDue(rule)
                 } catch (_: ArithmeticException) {
                     fail(what, i, "próxima data impossível de calcular")
                 } catch (_: java.time.DateTimeException) {
                     fail(what, i, "próxima data impossível de calcular")
                 }
-                if (next != null && next.isAfter(MAX_DATE)) fail(what, i, "próxima data impossível de calcular")
                 rule
             }
 

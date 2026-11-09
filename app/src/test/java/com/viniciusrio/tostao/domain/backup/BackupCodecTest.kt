@@ -125,7 +125,7 @@ class BackupCodecTest {
         assertTrue(invalid(BackupCodec.encode(tooBig, created)).contains("valor"))
         val zero = d.copy(transactions = d.transactions + tx(TxType.EXPENSE, 0, "a", 0))
         assertTrue(invalid(BackupCodec.encode(zero, created)).contains("valor"))
-        valid(BackupCodec.encode(d.copy(transactions = d.transactions + tx(TxType.INCOME, Money.MAX_CENTS * 3, "a", 0, adjustment = true)), created))
+        valid(BackupCodec.encode(d.copy(transactions = d.transactions + tx(TxType.INCOME, Money.MAX_CENTS * 5000, "a", 0, adjustment = true)), created))
     }
 
     @Test fun acceptsAdjustmentEditedIntoTransferOrWithCategory() {
@@ -175,10 +175,12 @@ class BackupCodecTest {
         assertTrue(invalid(with(rule(start, null, end = start.plusDays(3)))).contains("regra única"))
         assertTrue(invalid(with(rule(start, RecurrenceUnit.DAY, end = start.minusDays(1)))).contains("data final"))
         assertTrue(invalid(with(rule(start, RecurrenceUnit.DAY, consumed = -1))).contains("progresso"))
-        assertTrue(invalid(with(rule(start, RecurrenceUnit.YEAR, interval = 99, consumed = 200_000))).contains("próxima data"))
+        // A cada 99 anos, já paga duas vezes: o app grava isso, então o backup precisa aceitar.
+        valid(with(rule(start, RecurrenceUnit.YEAR, interval = 99, consumed = 2)))
+        valid(with(rule(start, RecurrenceUnit.YEAR, interval = 99, consumed = 200_000)))
         assertTrue(invalid(with(rule(start, RecurrenceUnit.DAY, type = TxType.TRANSFER))).contains("tipo"))
         assertTrue(invalid(with(rule(LocalDate.of(1800, 1, 1), RecurrenceUnit.DAY))).contains("data"))
-        valid(with(rule(start, RecurrenceUnit.DAY, consumed = 50_000)))
+        valid(with(rule(start, RecurrenceUnit.DAY, consumed = 200_000)))
         assertTrue(invalid(with(rule(start, RecurrenceUnit.DAY, consumed = 200_001))).contains("progresso"))
     }
 }

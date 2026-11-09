@@ -27,17 +27,17 @@
 
 ## 6. Interface
 
-- [ ] 6.1 Criar `Route.Settings` e `SettingsScreen` com as seções Organização, Seus dados (data do último backup e aviso de arquivo sem senha) e Sobre, com indicador de progresso. Trocar o ícone de Categorias pela engrenagem no topo da Início. Verificar no aparelho a navegação Início → Configurações → Categorias → voltar.
-- [ ] 6.2 Ligar os launchers do SAF para backup e restauração, com o diálogo de confirmação que mostra a data e as contagens do arquivo e as atuais. Verificar no aparelho os cenários de cancelar o seletor, desistir e confirmar.
-- [ ] 6.3 Criar a folha de exportação com chips de período, intervalo com validação e botão com a contagem. Verificar no aparelho a exportação do mês e o período vazio.
-- [ ] 6.4 Criar o cartão de lembrete na Início, com "Fazer backup" abrindo o seletor e "Agora não". Verificar no aparelho, forçando as preferências por `adb shell run-as`, se necessário.
-- [ ] 6.5 Atualizar o README: tirar "backup" e "exportação CSV" de "Fora do escopo" e acrescentar a seção de backup, explicando como restaurar num aparelho novo.
+- [x] 6.1 Criar `Route.Settings` e `SettingsScreen` com as seções Organização, Seus dados (data do último backup e aviso de arquivo sem senha) e Sobre, com indicador de progresso. Trocar o ícone de Categorias pela engrenagem no topo da Início. Verificar no aparelho a navegação Início → Configurações → Categorias → voltar.
+- [x] 6.2 Ligar os launchers do SAF para backup e restauração, com o diálogo de confirmação que mostra a data e as contagens do arquivo e as atuais. Verificar no aparelho os cenários de cancelar o seletor, desistir e confirmar.
+- [x] 6.3 Criar a folha de exportação com chips de período, intervalo com validação e botão com a contagem. Verificar no aparelho a exportação do mês e o período vazio.
+- [x] 6.4 Criar o cartão de lembrete na Início, com "Fazer backup" abrindo o seletor e "Agora não". Verificar no aparelho, forçando as preferências por `adb shell run-as`, se necessário.
+- [x] 6.5 Atualizar o README: tirar "backup" e "exportação CSV" de "Fora do escopo" e acrescentar a seção de backup, explicando como restaurar num aparelho novo.
 
 ## 7. Verificação
 
-- [ ] 7.1 Rodar `./gradlew -q :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest` sem falhas.
-- [ ] 7.2 No A26, instalar com `adb install --no-streaming -r` e rodar `am instrument`. Fazer backup para Downloads, criar uma transação, restaurar e conferir que ela sumiu e que os saldos batem. Tentar restaurar um `.json` qualquer e uma imagem e conferir que nada muda. Restaurar com um "Desfazer" na tela e conferir que ele não age depois. Exportar o CSV e abri-lo no Google Planilhas para conferir as colunas, os valores numéricos e os acentos.
-- [ ] 7.3 Pedir a revisão do código ao Codex (somente leitura), aplicar os achados válidos e registrá-los no PR.
+- [x] 7.1 Rodar `./gradlew -q :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest` sem falhas.
+- [x] 7.2 No A26, instalar com `adb install --no-streaming -r` e rodar `am instrument`. Fazer backup para Downloads, criar uma transação, restaurar e conferir que ela sumiu e que os saldos batem. Tentar restaurar um `.json` qualquer e uma imagem e conferir que nada muda. Restaurar com um "Desfazer" na tela e conferir que ele não age depois. Exportar o CSV e abri-lo no Google Planilhas para conferir as colunas, os valores numéricos e os acentos.
+- [x] 7.3 Pedir a revisão do código ao Codex (somente leitura), aplicar os achados válidos e registrá-los no PR.
 
 ## Workflow follow-up
 
