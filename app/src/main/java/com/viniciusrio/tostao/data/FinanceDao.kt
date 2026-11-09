@@ -51,4 +51,26 @@ interface FinanceDao {
     )
     suspend fun deleteBudgetsOnlyWithCategory(id: String)
     @Query("UPDATE planned_rules SET consumedOccurrences = :value WHERE id = :id") suspend fun setConsumed(id: String, value: Int)
+
+    // Retrato completo (backup) e substituição (restauração).
+    @Query("SELECT * FROM accounts ORDER BY sortOrder") suspend fun allAccounts(): List<AccountEntity>
+    @Query("SELECT * FROM categories ORDER BY sortOrder, name") suspend fun allCategories(): List<CategoryEntity>
+    @Query("SELECT * FROM transactions") suspend fun allTransactions(): List<TransactionEntity>
+    @Query("SELECT * FROM planned_rules") suspend fun allRules(): List<PlannedRuleEntity>
+    @Query("SELECT * FROM budgets ORDER BY sortOrder") suspend fun allBudgets(): List<BudgetEntity>
+    @Query("SELECT * FROM budget_categories") suspend fun allBudgetCategories(): List<BudgetCategoryEntity>
+
+    @Query("DELETE FROM budget_categories") suspend fun clearAllBudgetCategories()
+    @Query("DELETE FROM budgets") suspend fun clearBudgets()
+    @Query("DELETE FROM transactions") suspend fun clearTransactions()
+    @Query("DELETE FROM planned_rules") suspend fun clearRules()
+    @Query("DELETE FROM categories") suspend fun clearCategories()
+    @Query("DELETE FROM accounts") suspend fun clearAccounts()
+
+    @Insert suspend fun insertAccounts(l: List<AccountEntity>)
+    @Insert suspend fun insertCategoriesStrict(l: List<CategoryEntity>)
+    @Insert suspend fun insertTransactions(l: List<TransactionEntity>)
+    @Insert suspend fun insertRules(l: List<PlannedRuleEntity>)
+    @Insert suspend fun insertBudgets(l: List<BudgetEntity>)
+    @Insert suspend fun insertBudgetCategoriesStrict(l: List<BudgetCategoryEntity>)
 }

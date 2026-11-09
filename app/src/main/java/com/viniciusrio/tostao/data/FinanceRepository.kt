@@ -21,6 +21,9 @@ data class PlannedAction(val ruleId: String, val consumedAfter: Int, val created
 class FinanceRepository(private val db: FinanceDatabase) {
     private val dao = db.dao()
 
+    /** Gancho de teste: roda no meio de [replaceAll], depois de apagar e antes de inserir. */
+    internal var afterClearForTest: (suspend () -> Unit)? = null
+
     val data: Flow<FinanceData> = combine(
         dao.accounts(), dao.categories(), dao.transactions(), dao.rules(),
         combine(dao.budgets(), dao.budgetCategories()) { b, bc -> b to bc },
@@ -35,8 +38,43 @@ class FinanceRepository(private val db: FinanceDatabase) {
         )
     }
 
-    suspend fun seedIfEmpty() {
-        if (dao.categoryCount() == 0) dao.insertCategories(DefaultCategories.all())
+    /**
+     * Cria as categorias padrão só na primeira instalação ([alreadySeeded] falso e tabela vazia).
+     * Depois disso nunca mais, mesmo que o usuário apague todas ou restaure um backup sem categorias.
+     */
+    suspend fun seedOnFirstRun(alreadySeeded: Boolean) {
+        if (!alreadySeeded && dao.categoryCount() == 0) dao.insertCategories(DefaultCategories.all())
+    }
+
+    /** Todas as tabelas lidas numa única transação: um retrato consistente para o backup. */
+    suspend fun snapshot(): FinanceData = db.withTransaction {
+        val byBudget = dao.allBudgetCategories().groupBy({ it.budgetId }, { it.categoryId })
+        FinanceData(
+            accounts = dao.allAccounts().map { it.toDomain() },
+            categories = dao.allCategories().map { it.toDomain() },
+            transactions = dao.allTransactions().map { it.toDomain() },
+            rules = dao.allRules().map { it.toDomain() },
+            budgets = dao.allBudgets().map {
+                Budget(it.id, it.name, it.limitCents, it.allExpenses, byBudget[it.id].orEmpty().toSet(), it.sortOrder)
+            },
+        )
+    }
+
+    /** Troca todos os dados por [d] numa única transação: ou tudo muda, ou nada muda. */
+    suspend fun replaceAll(d: FinanceData) = db.withTransaction {
+        dao.clearAllBudgetCategories()
+        dao.clearBudgets()
+        dao.clearTransactions()
+        dao.clearRules()
+        dao.clearCategories()
+        dao.clearAccounts()
+        afterClearForTest?.invoke()
+        dao.insertAccounts(d.accounts.map { it.toEntity() })
+        dao.insertCategoriesStrict(d.categories.map { it.toEntity() })
+        dao.insertTransactions(d.transactions.map { it.toEntity() })
+        dao.insertRules(d.rules.map { it.toEntity() })
+        dao.insertBudgets(d.budgets.map { it.toEntity() })
+        dao.insertBudgetCategoriesStrict(d.budgets.flatMap { b -> b.categoryIds.map { BudgetCategoryEntity(b.id, it) } })
     }
 
     fun newId(): String = UUID.randomUUID().toString()

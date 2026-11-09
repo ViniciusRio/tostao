@@ -1,6 +1,7 @@
 package com.viniciusrio.tostao.ui
 
 import android.content.SharedPreferences
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
@@ -8,7 +9,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.viniciusrio.tostao.AppContainer
+import com.viniciusrio.tostao.data.DataTransferService
 import com.viniciusrio.tostao.data.FinanceRepository
+import com.viniciusrio.tostao.data.TransferOutcome
+import com.viniciusrio.tostao.domain.ExportPeriod
+import com.viniciusrio.tostao.domain.backup.BackupCodec
+import com.viniciusrio.tostao.domain.backup.BackupReminder
+import com.viniciusrio.tostao.domain.backup.BackupResult
 import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Balances
 import com.viniciusrio.tostao.domain.Budget
@@ -17,7 +24,12 @@ import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.PlannedRule
 import com.viniciusrio.tostao.domain.Transaction
 import com.viniciusrio.tostao.domain.TxType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,12 +42,17 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /** Mensagem única na tela; uma nova substitui a anterior (e o desfazer dela). */
-data class UiMessage(val id: Long, val text: String, val undo: (suspend () -> Unit)? = null)
+data class UiMessage(val id: Long, val text: String, val undo: (suspend () -> Unit)? = null, val epoch: Int = 0)
 
+/** Operação de arquivo em andamento; enquanto houver uma, outra não começa. */
+enum class DataOp { Backup, Reading, Restore, Export }
+
+@OptIn(FlowPreview::class)
 class MainViewModel(
     private val repo: FinanceRepository,
     private val clock: Clock,
     private val prefs: SharedPreferences,
+    private val transfer: DataTransferService,
 ) : ViewModel() {
 
     /** null enquanto o banco ainda não respondeu, para não piscar o estado vazio. */
@@ -59,8 +76,102 @@ class MainViewModel(
     private val _minute = MutableStateFlow(clock.millis() / 60_000)
     val minute: StateFlow<Long> = _minute.asStateFlow()
 
+    // Backup, restauração e exportação
+    private val _dataOp = MutableStateFlow<DataOp?>(null)
+    val dataOp: StateFlow<DataOp?> = _dataOp.asStateFlow()
+
+    /** Backup lido e validado, à espera da confirmação do usuário. */
+    private val _pendingRestore = MutableStateFlow<BackupResult.Valid?>(null)
+    val pendingRestore: StateFlow<BackupResult.Valid?> = _pendingRestore.asStateFlow()
+
+    /** Aumenta a cada restauração; desfazer de antes dela não vale mais. */
+    private var dataEpoch = 0
+
+    private val _backupState = MutableStateFlow(transfer.backupState())
+    val backupState = _backupState.asStateFlow()
+
+    private val fingerprint: StateFlow<Pair<String, Long?>?> = repo.data
+        .debounce(500)
+        .map { d ->
+            val now = clock.millis()
+            BackupCodec.fingerprint(d) to d.transactions.filter { it.dateTimeMillis <= now }.minOfOrNull { it.dateTimeMillis }
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Lembrete de backup, reavaliado quando os dados mudam e a cada minuto. */
+    val showBackupReminder: StateFlow<Boolean> = combine(fingerprint, _backupState, _minute) { fp, st, _ ->
+        fp != null && BackupReminder.shouldShow(st, fp.first, fp.second, clock.millis())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    private fun runOp(op: DataOp, block: suspend () -> Unit) {
+        if (_dataOp.value != null) return
+        _dataOp.value = op
+        viewModelScope.launch {
+            try {
+                block()
+            } finally {
+                _dataOp.value = null
+                _backupState.value = transfer.backupState()
+            }
+        }
+    }
+
+    private fun report(o: TransferOutcome) = say(
+        when (o) {
+            is TransferOutcome.Ok -> o.message
+            is TransferOutcome.Failed -> o.message
+        },
+    )
+
+    fun backupTo(uri: Uri?) {
+        uri ?: return
+        runOp(DataOp.Backup) { report(transfer.writeBackup(uri)) }
+    }
+
+    fun readRestore(uri: Uri?) {
+        uri ?: return
+        runOp(DataOp.Reading) {
+            when (val r = transfer.readBackup(uri)) {
+                is BackupResult.Valid -> _pendingRestore.value = r
+                is BackupResult.Invalid -> say(r.reason)
+            }
+        }
+    }
+
+    fun cancelRestore() {
+        _pendingRestore.value = null
+    }
+
+    fun confirmRestore() {
+        val valid = _pendingRestore.value ?: return
+        _pendingRestore.value = null
+        runOp(DataOp.Restore) {
+            val o = transfer.restore(valid)
+            if (o is TransferOutcome.Ok) {
+                dataEpoch++
+                backStack.clear(); backStack.add(Route.Home)
+            }
+            report(o)
+        }
+    }
+
+    fun exportCsv(uri: Uri?, period: ExportPeriod) {
+        uri ?: return
+        val d = data.value ?: return
+        runOp(DataOp.Export) { report(transfer.writeCsv(uri, d, period)) }
+    }
+
+    fun snoozeBackupReminder() {
+        transfer.snooze(clock.millis() + BackupReminder.SNOOZE_DAYS * BackupReminder.DAY_MS)
+        _backupState.value = transfer.backupState()
+    }
+
     init {
-        viewModelScope.launch { repo.seedIfEmpty() }
+        viewModelScope.launch {
+            repo.seedOnFirstRun(prefs.getBoolean(KEY_SEEDED, false))
+            prefs.edit().putBoolean(KEY_SEEDED, true).apply()
+        }
         viewModelScope.launch {
             while (true) {
                 delay(60_000 - clock.millis() % 60_000)
@@ -98,7 +209,7 @@ class MainViewModel(
     }
 
     fun say(text: String, undo: (suspend () -> Unit)? = null) {
-        _message.value = UiMessage(++messageSeq, text, undo)
+        _message.value = UiMessage(++messageSeq, text, undo, dataEpoch)
     }
 
     fun consumeMessage(id: Long) {
@@ -107,6 +218,7 @@ class MainViewModel(
 
     fun runUndo(m: UiMessage) {
         consumeMessage(m.id)
+        if (m.epoch != dataEpoch) return
         m.undo?.let { u -> viewModelScope.launch { u() } }
     }
 
@@ -205,11 +317,12 @@ class MainViewModel(
 
     companion object {
         private const val KEY_HIDE = "hide_values"
-        private const val KEY_LAST_ACCOUNT = "last_account"
+        private const val KEY_LAST_ACCOUNT = DataTransferService.KEY_LAST_ACCOUNT
+        private const val KEY_SEEDED = DataTransferService.KEY_SEEDED
 
         fun factory(c: AppContainer) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(c.repository, c.clock, c.prefs) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(c.repository, c.clock, c.prefs, c.transfer) as T
         }
     }
 }

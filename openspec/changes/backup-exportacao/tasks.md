@@ -13,17 +13,17 @@
 
 ## 3. CSV (domínio)
 
-- [ ] 3.1 Implementar `ExportPeriod` e `CsvExport.build`, com BOM, `;`, CRLF, valor sem milhar e sinal só na despesa, escape de aspas, `;` e quebra de linha, e o prefixo `'` contra fórmulas. Cobrir com testes: a linha exata do cenário do spec, o cabeçalho, uma transferência com conta de destino, uma transação sem categoria, uma observação com quebra de linha e aspas, um título `=SOMA(...)`, um texto `  +55` com espaços antes, um ajuste ("Sim"), a ordem cronológica e os filtros Tudo, Ano, Mês e Intervalo nas bordas do dia, no fuso.
+- [x] 3.1 Implementar `ExportPeriod` e `CsvExport.build`, com BOM, `;`, CRLF, valor sem milhar e sinal só na despesa, escape de aspas, `;` e quebra de linha, e o prefixo `'` contra fórmulas. Cobrir com testes: a linha exata do cenário do spec, o cabeçalho, uma transferência com conta de destino, uma transação sem categoria, uma observação com quebra de linha e aspas, um título `=SOMA(...)`, um texto `  +55` com espaços antes, um ajuste ("Sim"), a ordem cronológica e os filtros Tudo, Ano, Mês e Intervalo nas bordas do dia, no fuso.
 
 ## 4. Repositório
 
-- [ ] 4.1 Adicionar ao DAO as exclusões de todas as tabelas e os inserts em lote, `FinanceRepository.replaceAll(data)` dentro de `withTransaction`, e `snapshot()`, que lê as 6 tabelas numa única transação. Cobrir no teste instrumentado: a substituição completa (planejado com `consumedOccurrences` e orçamento com categorias preservados) e uma falha forçada no meio, depois da qual os dados antigos continuam lá.
-- [ ] 4.2 Mudar `seedIfEmpty` para usar a preferência `seeded`, testando no teste instrumentado (ou com um teste de unidade da regra) que um banco sem categorias, com `seeded` igual a true, continua vazio.
+- [x] 4.1 Adicionar ao DAO as exclusões de todas as tabelas e os inserts em lote, `FinanceRepository.replaceAll(data)` dentro de `withTransaction`, e `snapshot()`, que lê as 6 tabelas numa única transação. Cobrir no teste instrumentado: a substituição completa (planejado com `consumedOccurrences` e orçamento com categorias preservados) e uma falha forçada no meio, depois da qual os dados antigos continuam lá.
+- [x] 4.2 Mudar `seedIfEmpty` para usar a preferência `seeded`, testando no teste instrumentado (ou com um teste de unidade da regra) que um banco sem categorias, com `seeded` igual a true, continua vazio.
 
 ## 5. Serviço e ViewModel
 
-- [ ] 5.1 Criar `data/DataTransferService`, com `writeBackup`, `readBackup` (teto de 50 MB e erros de leitura tratados), `restore` (que limpa `last_account` órfã) e `writeCsv`. O serviço usa `ContentResolver` em `Dispatchers.IO`, recusa gerar um backup acima de 50 MB, remove o documento incompleto em caso de falha e grava `last_backup_at` e o fingerprint só depois do `close`. Registrar o serviço no `AppContainer`. Verificar pelo build e pelo teste manual da seção 7.
-- [ ] 5.2 Incluir no `MainViewModel` o `dataOp` (com bloqueio de operação simultânea), o `pendingRestore`, o `dataEpoch` (que invalida desfazer anterior à restauração), o fluxo do lembrete com `debounce` combinado com `minute` e o "Agora não". Depois de restaurar, voltar o `backStack` para `[Home]` e mostrar as mensagens do spec. Verificar pelo build e pelo teste manual.
+- [x] 5.1 Criar `data/DataTransferService`, com `writeBackup`, `readBackup` (teto de 50 MB e erros de leitura tratados), `restore` (que limpa `last_account` órfã) e `writeCsv`. O serviço usa `ContentResolver` em `Dispatchers.IO`, recusa gerar um backup acima de 50 MB, remove o documento incompleto em caso de falha e grava `last_backup_at` e o fingerprint só depois do `close`. Registrar o serviço no `AppContainer`. Verificar pelo build e pelo teste manual da seção 7.
+- [x] 5.2 Incluir no `MainViewModel` o `dataOp` (com bloqueio de operação simultânea), o `pendingRestore`, o `dataEpoch` (que invalida desfazer anterior à restauração), o fluxo do lembrete com `debounce` combinado com `minute` e o "Agora não". Depois de restaurar, voltar o `backStack` para `[Home]` e mostrar as mensagens do spec. Verificar pelo build e pelo teste manual.
 
 ## 6. Interface
 
