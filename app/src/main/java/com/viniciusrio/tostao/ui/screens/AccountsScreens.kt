@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.viniciusrio.tostao.domain.Limits
 import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Balances
 import com.viniciusrio.tostao.domain.FinanceData
@@ -160,7 +161,7 @@ fun AccountFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
     val trimmed = name.trim()
     val duplicate = data.accounts.any { it.id != id && it.name.equals(trimmed, ignoreCase = true) }
     val initialCents = parseSigned(initial)
-    val valid = trimmed.length in 1..40 && !duplicate && initialCents != null
+    val valid = trimmed.length in 1..Limits.ACCOUNT_NAME && !duplicate && initialCents != null
     val balance = existing?.let { e -> Balances.compute(data, vm.nowMillis()).perAccount.firstOrNull { it.account.id == e.id }?.balanceCents }
 
     Column(Modifier.fillMaxSize().imePadding()) {
@@ -184,7 +185,7 @@ fun AccountFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
                 }
             }
             OutlinedTextField(
-                name, { name = it.take(40) }, label = { Text("Nome da conta") }, singleLine = true,
+                name, { name = it.take(Limits.ACCOUNT_NAME) }, label = { Text("Nome da conta") }, singleLine = true,
                 isError = duplicate,
                 supportingText = if (duplicate) ({ Text("Já existe uma conta com esse nome") }) else null,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),

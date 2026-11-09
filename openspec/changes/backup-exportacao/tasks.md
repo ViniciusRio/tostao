@@ -3,13 +3,13 @@
 ## 1. Base
 
 - [x] 1.1 Adicionar o plugin `kotlin.plugin.serialization` e `kotlinx-serialization-json` ao catálogo e ao app, e ativar `buildConfig`. Verificar com `./gradlew :app:assembleDebug`.
-- [ ] 1.2 Criar `domain/Limits` (nomes de conta e orçamento com 40, de categoria com 30, título com 60, observação com 500 e intervalo de 1 a 99) e trocar os números soltos nos formulários por ele. Verificar que os testes atuais e o build passam sem mudança de comportamento.
+- [x] 1.2 Criar `domain/Limits` (nomes de conta e orçamento com 40, de categoria com 30, título com 60, observação com 500 e intervalo de 1 a 99) e trocar os números soltos nos formulários por ele. Verificar que os testes atuais e o build passam sem mudança de comportamento.
 
 ## 2. Formato e validação do backup (domínio)
 
-- [ ] 2.1 Criar os DTOs do formato 1 (`domain/backup/BackupFormat.kt`) e `BackupCodec.encode(data, createdAt)` com saída canônica (listas ordenadas por id), verificando com um teste de ida e volta (`encode` e depois `decode` devolvem o mesmo `FinanceData`).
-- [ ] 2.2 Implementar `BackupCodec.decode` com as três camadas (estrutura, decodificação e regras de negócio) e mensagens em pt-BR. Cobrir com testes: arquivo de outro app, JSON inválido, versão 2, enum desconhecido, ID repetido, nome de conta duplicado, valor fora do limite, transferência para a mesma conta, transferência com categoria, categoria de tipo errado, referência quebrada, orçamento sem categoria, orçamento global com categorias, `categoryIds` repetido, regra com `interval` 0, regra única com `endDate`, `endDate` anterior ao início, `consumedOccurrences` extremo, `plannedRuleId` órfão (aceito), ajuste acima de `MAX_CENTS` (aceito) e ajuste editado para transferência (aceito).
-- [ ] 2.3 Implementar o fingerprint (hash da serialização canônica) e `BackupReminder.shouldShow`. Cobrir com testes os cenários do spec: backup antigo com mudança, backup antigo sem mudança, nunca houve backup com transação de 7 dias ou mais e com menos de 7 dias, adiamento ativo, sem transações e o prazo vencendo sem mudança de dados (só o `now` muda).
+- [x] 2.1 Criar os DTOs do formato 1 (`domain/backup/BackupFormat.kt`) e `BackupCodec.encode(data, createdAt)` com saída canônica (listas ordenadas por id), verificando com um teste de ida e volta (`encode` e depois `decode` devolvem o mesmo `FinanceData`).
+- [x] 2.2 Implementar `BackupCodec.decode` com as três camadas (estrutura, decodificação e regras de negócio) e mensagens em pt-BR. Cobrir com testes: arquivo de outro app, JSON inválido, versão 2, enum desconhecido, ID repetido, nome de conta duplicado, valor fora do limite, transferência para a mesma conta, transferência com categoria, categoria de tipo errado, referência quebrada, orçamento sem categoria, orçamento global com categorias, `categoryIds` repetido, regra com `interval` 0, regra única com `endDate`, `endDate` anterior ao início, `consumedOccurrences` extremo, `plannedRuleId` órfão (aceito), ajuste acima de `MAX_CENTS` (aceito) e ajuste editado para transferência (aceito).
+- [x] 2.3 Implementar o fingerprint (hash da serialização canônica) e `BackupReminder.shouldShow`. Cobrir com testes os cenários do spec: backup antigo com mudança, backup antigo sem mudança, nunca houve backup com transação de 7 dias ou mais e com menos de 7 dias, adiamento ativo, sem transações e o prazo vencendo sem mudança de dados (só o `now` muda).
 
 ## 3. CSV (domínio)
 

@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
+import com.viniciusrio.tostao.domain.Limits
 import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.Money
@@ -140,11 +141,11 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
             }
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
-                title, { title = it.take(60) }, label = { Text("Título (opcional)") }, singleLine = true,
+                title, { title = it.take(Limits.TITLE) }, label = { Text("Título (opcional)") }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             )
             OutlinedTextField(
-                note, { note = it.take(500) }, label = { Text("Observação (opcional)") },
+                note, { note = it.take(Limits.NOTE) }, label = { Text("Observação (opcional)") },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
                 minLines = 2,
             )
