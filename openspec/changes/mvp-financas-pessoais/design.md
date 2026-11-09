@@ -31,7 +31,7 @@ Projeto novo, sem código. Referência funcional em `docs/engenharia-reversa.md`
 - **Estado**: um único `ViewModel` de atividade expõe um `StateFlow<FinanceData>` (todas as tabelas combinadas) e as ações; cada tela deriva o que precisa com as funções puras do domínio. Formulários usam estado local da tela. Um `SnackbarHost` único mostra apenas a última ação com "Desfazer".
 - **Relógio injetável** (`java.time.Clock`) para testar "hoje", atrasados e mês atual.
 - **Preferência "ocultar valores"** em `SharedPreferences` (um booleano não justifica DataStore).
-- **Pacote `com.viniciusrio.finance`** e nome do app num único recurso `app_name`: o nome definitivo ainda não foi escolhido.
+- **Pacote `com.viniciusrio.tostao`** e nome do app "Tostão" (lema "cada vintém no lugar") no recurso `app_name`.
 
 ## Risks / Trade-offs
 

@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Fluxo"
+rootProject.name = "Tostao"
 include(":app")

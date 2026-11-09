@@ -13,11 +13,11 @@ room {
 }
 
 android {
-    namespace = "com.viniciusrio.finance"
+    namespace = "com.viniciusrio.tostao"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.viniciusrio.finance"
+        applicationId = "com.viniciusrio.tostao"
         minSdk = 26
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

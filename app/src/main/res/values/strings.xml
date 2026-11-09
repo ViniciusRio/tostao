@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Nome provisório: o nome definitivo do app ainda será escolhido. -->
-    <string name="app_name">Fluxo</string>
+    <string name="app_name">Tostão</string>
 </resources>

@@ -1,4 +1,6 @@
-# Fluxo (nome provisório)
+# Tostão
+
+*Cada vintém no lugar.*
 
 App Android de finanças pessoais, **local e offline**, em Kotlin + Jetpack Compose. Inspirado nas funções do Ivy Wallet, mas escrito do zero, com melhorias de UI/UX levantadas por engenharia reversa do app original (veja [docs/engenharia-reversa.md](docs/engenharia-reversa.md)).
 
@@ -40,7 +42,7 @@ Specs e decisões em [`openspec/`](openspec/) (SDD com [OpenSpec](https://github
 ./gradlew :app:testDebugUnitTest          # testes de domínio
 ./gradlew :app:lintDebug :app:assembleDebug
 adb install --no-streaming -r app/build/outputs/apk/debug/app-debug.apk
-./gradlew :app:assembleDebugAndroidTest   # depois: adb shell am instrument -w com.viniciusrio.finance.test/androidx.test.runner.AndroidJUnitRunner
+./gradlew :app:assembleDebugAndroidTest   # depois: adb shell am instrument -w com.viniciusrio.tostao.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 Requer JDK 17+ e Android SDK 36. minSdk 26.
