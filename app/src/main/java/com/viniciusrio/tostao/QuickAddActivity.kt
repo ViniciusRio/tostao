@@ -18,17 +18,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.lifecycleScope
 import com.viniciusrio.tostao.domain.TxType
 import com.viniciusrio.tostao.ui.MainViewModel
 import com.viniciusrio.tostao.ui.Route
 import com.viniciusrio.tostao.ui.screens.TransactionFormScreen
 import com.viniciusrio.tostao.ui.theme.FinanceTheme
-import kotlinx.coroutines.launch
 
 /**
  * Formulário de nova transação aberto pelo widget ou pelos atalhos do ícone. Roda numa tarefa
@@ -38,28 +37,34 @@ import kotlinx.coroutines.launch
 class QuickAddActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels { MainViewModel.factory((application as FinanceApp).container) }
 
-    /** Muda a cada novo pedido (widget tocado de novo) para o formulário recomeçar vazio. */
-    private var launchKey by mutableIntStateOf(0)
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // Rota só na primeira criação do VM; na rotação ele sobrevive com o formulário.
-        if (vm.backStack.lastOrNull() !is Route.TxForm) start(intent)
-        vm.onRootBack = {
-            lifecycleScope.launch { if (vm.awaitWrites()) finish() }
-        }
+        if (vm.backStack.lastOrNull() !is Route.TxForm) vm.startQuick(typeOf(intent), newRequest = false)
         setContent {
             FinanceTheme {
                 val data by vm.data.collectAsState()
                 val message by vm.message.collectAsState()
+                val close by vm.quickClose.collectAsState()
                 var redirected by rememberSaveable { mutableIntStateOf(0) }
+                // Última mensagem já mostrada, para a confirmação não aparecer duas vezes.
+                var toasted by rememberSaveable { mutableLongStateOf(-1L) }
 
-                LaunchedEffect(message?.id) {
-                    message?.let { m ->
-                        Toast.makeText(applicationContext, m.text, Toast.LENGTH_SHORT).show()
-                        vm.consumeMessage(m.id)
-                    }
+                fun toast(m: com.viniciusrio.tostao.ui.UiMessage) {
+                    if (m.id == toasted) return
+                    toasted = m.id
+                    Toast.makeText(applicationContext, m.text, Toast.LENGTH_SHORT).show()
+                    vm.consumeMessage(m.id)
+                }
+
+                LaunchedEffect(message?.id) { message?.let(::toast) }
+                // Fecha uma vez, quando o VM confirma que a gravação do pedido atual terminou bem.
+                LaunchedEffect(close) {
+                    val c = close ?: return@LaunchedEffect
+                    if (c.request != vm.quickRequest) return@LaunchedEffect
+                    c.message?.let(::toast)
+                    finish()
                 }
                 BackHandler { vm.back() }
 
@@ -74,7 +79,7 @@ class QuickAddActivity : ComponentActivity() {
                             if (redirected++ == 0) openAccountForm()
                         }
                         else -> Box(Modifier.safeDrawingPadding()) {
-                            key(launchKey) { TransactionFormScreen(vm, d, route.type, null) }
+                            key(vm.quickRequest) { TransactionFormScreen(vm, d, route.type, null) }
                         }
                     }
                 }
@@ -85,15 +90,11 @@ class QuickAddActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        start(intent)
-        launchKey++
+        vm.startQuick(typeOf(intent), newRequest = true)
     }
 
-    private fun start(intent: Intent?) {
-        val type = intent?.getStringExtra(EXTRA_TYPE)?.let { t -> TxType.entries.firstOrNull { it.name == t } } ?: TxType.EXPENSE
-        vm.backStack.clear()
-        vm.backStack.add(Route.TxForm(type))
-    }
+    private fun typeOf(intent: Intent?): TxType =
+        intent?.getStringExtra(EXTRA_TYPE)?.let { t -> TxType.entries.firstOrNull { it.name == t } } ?: TxType.EXPENSE
 
     private fun openAccountForm() {
         startActivity(

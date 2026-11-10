@@ -27,7 +27,9 @@ import com.viniciusrio.tostao.domain.TxType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -204,12 +206,8 @@ class MainViewModel(
         }
     }
 
-    /** Chamado quando o usuário volta da tela raiz; a QuickAddActivity usa para fechar. */
-    var onRootBack: (() -> Unit)? = null
-
-    /** Gravações iniciadas por formulários; quem fecha a tela espera por elas. */
-    private val pendingWrites = mutableListOf<Job>()
-    private var writeFailed = false
+    /** Gravações iniciadas por formulários, cada uma com o próprio resultado (true = gravou). */
+    private val pendingWrites = mutableListOf<Deferred<Boolean>>()
     private val _saveFailures = MutableStateFlow(0)
 
     /** Conta falhas de gravação; o formulário usa para liberar o botão Salvar de novo. */
@@ -217,14 +215,50 @@ class MainViewModel(
 
     /** Espera as gravações pendentes; true se todas deram certo. */
     suspend fun awaitWrites(): Boolean {
-        pendingWrites.toList().joinAll()
-        return !writeFailed.also { writeFailed = false }
+        val snapshot = pendingWrites.toList()
+        val ok = snapshot.awaitAll().all { it }
+        pendingWrites.removeAll(snapshot)
+        return ok
     }
 
-    private fun track(job: Job): Job {
-        pendingWrites.removeAll { it.isCompleted }
-        pendingWrites += job
-        return job
+    // Formulário rápido (QuickAddActivity). Tudo aqui vive no ViewModel para sobreviver à rotação.
+
+    /** Identidade do pedido atual; um novo toque no widget ou atalho cria outro. */
+    var quickRequest by androidx.compose.runtime.mutableIntStateOf(0)
+        private set
+
+    /** Pedido para a activity fechar, com a mensagem a mostrar como confirmação. */
+    data class QuickClose(val request: Int, val message: UiMessage?)
+
+    private val _quickClose = MutableStateFlow<QuickClose?>(null)
+    val quickClose: StateFlow<QuickClose?> = _quickClose.asStateFlow()
+    private var closing: Job? = null
+
+    fun startQuick(type: TxType, newRequest: Boolean) {
+        closing?.cancel()
+        closing = null
+        _quickClose.value = null
+        if (newRequest) quickRequest++
+        backStack.clear()
+        backStack.add(Route.TxForm(type))
+        onRootBack = ::requestQuickClose
+    }
+
+    /** Fecha o formulário rápido só depois de gravar com sucesso; um fechamento por vez. */
+    private fun requestQuickClose() {
+        if (closing?.isActive == true) return
+        val request = quickRequest
+        closing = viewModelScope.launch {
+            if (awaitWrites() && request == quickRequest) _quickClose.value = QuickClose(request, _message.value)
+        }
+    }
+
+    /** Chamado quando o usuário volta da tela raiz; o formulário rápido usa para fechar. */
+    private var onRootBack: (() -> Unit)? = null
+
+    private fun track(d: Deferred<Boolean>): Deferred<Boolean> {
+        pendingWrites += d
+        return d
     }
 
     fun back(): Boolean {
@@ -297,15 +331,14 @@ class MainViewModel(
     }
 
     // Transações
-    fun saveTransaction(t: Transaction, isNew: Boolean) = track(viewModelScope.launch {
+    fun saveTransaction(t: Transaction, isNew: Boolean): Deferred<Boolean> = track(viewModelScope.async {
         try {
             repo.saveTransaction(t)
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            writeFailed = true
             _saveFailures.value++
             say("Não foi possível salvar a transação")
-            return@launch
+            return@async false
         }
         if (!t.isAdjustment) prefs.edit().putString(KEY_LAST_ACCOUNT, t.accountId).apply()
         say(
@@ -316,6 +349,7 @@ class MainViewModel(
                 else -> "Transferência registrada"
             },
         )
+        true
     })
 
     fun deleteTransaction(t: Transaction) = viewModelScope.launch {

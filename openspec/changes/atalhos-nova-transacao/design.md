@@ -28,7 +28,12 @@ O widget é um único botão estático, sem estado e sem atualização periódic
 
 ### Sair pela raiz e esperar a gravação
 - `MainViewModel` ganha `onRootBack: (() -> Unit)?`. `back()` com um item só chama esse callback. Ele é nulo na `MainActivity`, então nada muda lá. A `QuickAddActivity` também trata o voltar do sistema com `BackHandler`, que chama `vm.back()`.
-- `saveTransaction` passa a guardar o `Job` em `pendingWrites` e a capturar exceções do repositório. Em caso de erro, mostra "Não foi possível salvar a transação" e marca a falha. O `onRootBack` da `QuickAddActivity` roda `lifecycleScope.launch { if (vm.awaitWrites()) finish() }`: só fecha se todas as gravações deram certo. Se alguma falhou, o formulário continua aberto com os dados (achado do Codex). A morte do processo no meio da gravação continua sendo um limite aceito.
+- `saveTransaction` devolve um `Deferred<Boolean>` com o resultado da própria gravação e captura exceções do repositório. Em caso de erro, mostra "Não foi possível salvar a transação". Isso atende aos achados do Codex sobre a spec e sobre o código.
+- **Fechamento no VM:** todo o fluxo de fechar vive no `ViewModel` (`startQuick`, `requestQuickClose`, `quickRequest`, `quickClose`), para sobreviver à rotação.
+  - `back()` na raiz chama `requestQuickClose`, que permite um fechamento por vez. Ele espera as gravações em `viewModelScope` e só publica `QuickClose(pedido, mensagem)` se todas deram certo e o pedido ainda for o atual.
+  - A activity observa `quickClose`, mostra a confirmação (sem duplicar, porque guarda o id da última mensagem mostrada em `rememberSaveable`) e chama `finish()`.
+  - Um novo pedido (`onNewIntent`) cancela um fechamento pendente e incrementa `quickRequest`. Esse valor é a chave de composição do formulário, por isso uma rotação não perde o rascunho.
+  - A morte do processo no meio da gravação continua sendo um limite aceito.
 - **Toque duplo em Salvar:** o formulário guarda o estado "salvando" e ignora novos toques. Isso vale também para o app principal (achado do Codex).
 - **Categorias padrão com dois VMs:** os dois podem ler `seeded=false` no primeiro uso, mas `insertCategories` usa IDs fixos (`def-exp-*`, `def-inc-*`) com `OnConflictStrategy.IGNORE`, então não há duplicação. O VM do formulário rápido também roda o loop de minuto e o fingerprint, que são baratos. Um VM dedicado ficaria para outro change.
 - **Confirmação:** a `QuickAddActivity` observa `vm.message` e mostra um `Toast` curto ("Despesa registrada"), que continua visível depois que a activity fecha. Não há "Desfazer" no toast. Para corrigir, o usuário edita ou exclui a transação no app. Fica registrado como trade-off.
