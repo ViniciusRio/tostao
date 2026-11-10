@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Tostão</string>
+
+    <string name="shortcut_expense_short">Despesa</string>
+    <string name="shortcut_expense_long">Nova despesa</string>
+    <string name="shortcut_income_short">Receita</string>
+    <string name="shortcut_income_long">Nova receita</string>
+    <string name="shortcut_transfer_short">Transferir</string>
+    <string name="shortcut_transfer_long">Transferência</string>
+
+    <string name="widget_expense_label">Despesa</string>
+    <string name="widget_expense_description">Nova despesa no Tostão</string>
+    <string name="widget_expense_picker">Registra uma despesa com um toque</string>
 </resources>

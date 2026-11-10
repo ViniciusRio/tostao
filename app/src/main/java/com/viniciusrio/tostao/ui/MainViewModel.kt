@@ -26,6 +26,8 @@ import com.viniciusrio.tostao.domain.Transaction
 import com.viniciusrio.tostao.domain.TxType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -202,8 +204,34 @@ class MainViewModel(
         }
     }
 
+    /** Chamado quando o usuário volta da tela raiz; a QuickAddActivity usa para fechar. */
+    var onRootBack: (() -> Unit)? = null
+
+    /** Gravações iniciadas por formulários; quem fecha a tela espera por elas. */
+    private val pendingWrites = mutableListOf<Job>()
+    private var writeFailed = false
+    private val _saveFailures = MutableStateFlow(0)
+
+    /** Conta falhas de gravação; o formulário usa para liberar o botão Salvar de novo. */
+    val saveFailures: StateFlow<Int> = _saveFailures.asStateFlow()
+
+    /** Espera as gravações pendentes; true se todas deram certo. */
+    suspend fun awaitWrites(): Boolean {
+        pendingWrites.toList().joinAll()
+        return !writeFailed.also { writeFailed = false }
+    }
+
+    private fun track(job: Job): Job {
+        pendingWrites.removeAll { it.isCompleted }
+        pendingWrites += job
+        return job
+    }
+
     fun back(): Boolean {
-        if (backStack.size <= 1) return false
+        if (backStack.size <= 1) {
+            onRootBack?.invoke()
+            return false
+        }
         backStack.removeAt(backStack.lastIndex)
         return true
     }
@@ -269,9 +297,17 @@ class MainViewModel(
     }
 
     // Transações
-    fun saveTransaction(t: Transaction, isNew: Boolean) = viewModelScope.launch {
+    fun saveTransaction(t: Transaction, isNew: Boolean) = track(viewModelScope.launch {
+        try {
+            repo.saveTransaction(t)
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            writeFailed = true
+            _saveFailures.value++
+            say("Não foi possível salvar a transação")
+            return@launch
+        }
         if (!t.isAdjustment) prefs.edit().putString(KEY_LAST_ACCOUNT, t.accountId).apply()
-        repo.saveTransaction(t)
         say(
             when {
                 !isNew -> "Transação salva"
@@ -280,7 +316,7 @@ class MainViewModel(
                 else -> "Transferência registrada"
             },
         )
-    }
+    })
 
     fun deleteTransaction(t: Transaction) = viewModelScope.launch {
         repo.deleteTransaction(t.id)

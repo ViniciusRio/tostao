@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:clickable="true"
+    android:contentDescription="@string/widget_expense_description"
+    android:focusable="true"
+    android:gravity="center"
+    android:minWidth="48dp"
+    android:minHeight="48dp"
+    android:orientation="vertical"
+    android:padding="6dp">
+
+    <ImageView
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_widget_expense" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:importantForAccessibility="no"
+        android:maxLines="1"
+        android:text="@string/widget_expense_label"
+        android:textColor="#FFFFFFFF"
+        android:textSize="12sp" />
+</LinearLayout>

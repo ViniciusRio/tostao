@@ -35,6 +35,22 @@ O formulário aberto por widget ou atalho SHALL rodar separado da navegação do
 - **WHEN** o app está aberto em Relatórios em segundo plano e o usuário registra uma despesa pelo widget
 - **THEN** ao voltar ao app, ele continua em Relatórios, já com a nova despesa nos números
 
+#### Scenario: Erro ao gravar
+- **WHEN** a gravação da transação falha
+- **THEN** o formulário continua aberto com os dados digitados e o app informa que não foi possível salvar
+
+#### Scenario: Dois toques em Salvar
+- **WHEN** o usuário toca duas vezes seguidas em Salvar
+- **THEN** só uma transação é registrada
+
+#### Scenario: Novo atalho com o formulário aberto
+- **WHEN** o formulário rápido está aberto e o usuário toca de novo no widget ou num atalho
+- **THEN** abre um formulário novo do tipo pedido, sem registrar nada do anterior
+
+#### Scenario: Girar a tela
+- **WHEN** o usuário gira o aparelho com valor e categoria preenchidos
+- **THEN** o formulário continua com os mesmos dados
+
 #### Scenario: Não aparece nos recentes
 - **WHEN** o usuário salva pelo atalho e abre a lista de apps recentes
 - **THEN** o formulário rápido não aparece como uma tarefa separada
@@ -45,3 +61,7 @@ Sem nenhuma conta cadastrada, o widget e os atalhos SHALL abrir o app no cadastr
 #### Scenario: Primeiro uso pelo widget
 - **WHEN** não existe conta e o usuário toca no widget
 - **THEN** o app abre no formulário de nova conta com a mensagem "Crie uma conta antes de registrar transações"
+
+#### Scenario: App já aberto sem conta
+- **WHEN** o app já está aberto no cadastro de conta e o usuário toca no widget
+- **THEN** o app volta a esse cadastro sem empilhar um segundo formulário de conta

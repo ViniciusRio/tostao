@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícone de atalho: glifo Material (CallReceived) sobre círculo na cor do app. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="@color/launcher_bg"
+        android:pathData="M24,0A24,24 0,1 1,24,48A24,24 0,1 1,24,0Z" />
+    <group android:translateX="12" android:translateY="12">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M20,5.41L18.59,4 7,15.59V9H5v10h10v-2H8.41z" />
+    </group>
+</vector>
