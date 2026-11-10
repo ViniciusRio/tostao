@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -24,6 +25,25 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = 1
         versionName = "0.1.0"
+    }
+
+    // Assinatura de release lida de fora do repositório (keystore local, nunca commitada).
+    // Caminho padrão: ~/.android/tostao/keystore.properties; pode ser trocado por TOSTAO_KEYSTORE_PROPS.
+    val keystorePropsFile = file(
+        System.getenv("TOSTAO_KEYSTORE_PROPS")
+            ?: "${System.getProperty("user.home")}/.android/tostao/keystore.properties",
+    )
+    if (keystorePropsFile.exists()) {
+        val props = Properties().apply { keystorePropsFile.inputStream().use { load(it) } }
+        signingConfigs {
+            create("release") {
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
     }
 
     compileOptions {
