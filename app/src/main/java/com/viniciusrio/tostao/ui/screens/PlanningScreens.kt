@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.viniciusrio.tostao.domain.Limits
 import com.viniciusrio.tostao.domain.Budget
 import com.viniciusrio.tostao.domain.BudgetStatus
 import com.viniciusrio.tostao.domain.Budgets
@@ -252,7 +253,7 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
     val n = interval.toIntOrNull()
     val endOk = !hasEnd || unit == null || !end.isBefore(start)
     val valid = cents != null && cents > 0 && title.isNotBlank() && accountId != null &&
-        (unit == null || (n != null && n in 1..99)) && endOk
+        (unit == null || (n != null && n in Limits.INTERVAL)) && endOk
 
     Column(Modifier.fillMaxSize().imePadding()) {
         BackTopBar(if (existing == null) "Novo planejamento" else "Editar planejamento", vm::back) {
@@ -261,7 +262,7 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             SegmentedChoice(listOf(TxType.EXPENSE to "Despesa", TxType.INCOME to "Receita"), type, { type = it })
             OutlinedTextField(
-                title, { title = it.take(60) }, label = { Text("Título") }, singleLine = true,
+                title, { title = it.take(Limits.TITLE) }, label = { Text("Título") }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
             )
             AmountField(amount, { amount = it }, "Valor", Modifier.padding(horizontal = 20.dp))
@@ -279,7 +280,7 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
             if (unit != null) {
                 OutlinedTextField(
                     interval, { interval = it.filter(Char::isDigit).take(2) }, singleLine = true,
-                    label = { Text("A cada quantos") }, isError = n == null || n !in 1..99,
+                    label = { Text("A cada quantos") }, isError = n == null || n !in Limits.INTERVAL,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
                 )
@@ -344,7 +345,7 @@ fun BudgetFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             OutlinedTextField(
-                name, { name = it.take(40) }, label = { Text("Nome") }, singleLine = true,
+                name, { name = it.take(Limits.BUDGET_NAME) }, label = { Text("Nome") }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
             )
             AmountField(amount, { amount = it }, "Limite por mês", Modifier.padding(horizontal = 20.dp))

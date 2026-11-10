@@ -60,6 +60,8 @@ import com.viniciusrio.tostao.ui.screens.PlanningScreen
 import com.viniciusrio.tostao.ui.screens.ReportsScreen
 import com.viniciusrio.tostao.ui.screens.RuleFormScreen
 import com.viniciusrio.tostao.ui.screens.SearchScreen
+import com.viniciusrio.tostao.ui.screens.DataOpOverlay
+import com.viniciusrio.tostao.ui.screens.SettingsScreen
 import com.viniciusrio.tostao.ui.screens.TransactionFormScreen
 import com.viniciusrio.tostao.ui.screens.TransactionsScreen
 import com.viniciusrio.tostao.ui.theme.LocalSemantic
@@ -147,10 +149,13 @@ fun FinanceRoot(vm: MainViewModel) {
                     is Route.RuleForm -> RuleFormScreen(vm, d, route.id)
                     is Route.BudgetForm -> BudgetFormScreen(vm, d, route.id)
                     Route.Search -> SearchScreen(vm, d)
+                    Route.Settings -> SettingsScreen(vm, d)
                 }
             }
         }
     }
+
+    if (d != null) DataOpOverlay(vm, d)
 
     if (showAdd) {
         ModalBottomSheet(onDismissRequest = { showAdd = false }) {

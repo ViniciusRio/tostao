@@ -39,8 +39,46 @@ class FinanceRepositoryTest {
     )
 
     @Test fun seedsDefaultCategoriesOnce() = runBlocking {
-        repo.seedIfEmpty(); repo.seedIfEmpty()
+        repo.seedOnFirstRun(alreadySeeded = false); repo.seedOnFirstRun(alreadySeeded = false)
         assertEquals(14, repo.data.first().categories.size)
+    }
+
+    @Test fun doesNotSeedAgainAfterFirstRun() = runBlocking {
+        repo.seedOnFirstRun(alreadySeeded = true)
+        assertTrue(repo.data.first().categories.isEmpty())
+    }
+
+    private fun backupSample() = com.viniciusrio.tostao.domain.FinanceData(
+        accounts = listOf(acc("X").copy(order = 1), acc("Y").copy(name = "Y2", order = 0)),
+        categories = listOf(Category("food", "Comida", CategoryType.EXPENSE, 0, "tag", 0)),
+        transactions = listOf(tx("n1", "X", cat = "food"), tx("n2", "X", to = "Y")),
+        rules = listOf(PlannedRule("rr", TxType.EXPENSE, 500, "Y", "food", "Luz", LocalDate.of(2026, 1, 31), RecurrenceUnit.MONTH, 1, null, 4)),
+        budgets = listOf(Budget("bb", "Comida", 1000, false, setOf("food"), 0), Budget("all", "Tudo", 9000, true, emptySet(), 1)),
+    )
+
+    @Test fun replaceAllSwapsEverythingAndSnapshotReadsItBack() = runBlocking {
+        repo.seedOnFirstRun(alreadySeeded = false)
+        repo.saveAccount(acc("old")); repo.saveTransaction(tx("old-t", "old"))
+        val incoming = backupSample()
+        repo.replaceAll(incoming)
+        val snap = repo.snapshot()
+        assertEquals(incoming.accounts.sortedBy { it.id }, snap.accounts.sortedBy { it.id })
+        assertEquals(incoming.categories, snap.categories)
+        assertEquals(incoming.transactions.sortedBy { it.id }, snap.transactions.sortedBy { it.id })
+        assertEquals(incoming.rules, snap.rules)
+        assertEquals(4, snap.rules.single().consumedOccurrences)
+        assertEquals(incoming.budgets.sortedBy { it.id }, snap.budgets.sortedBy { it.id })
+    }
+
+    @Test fun replaceAllFailingMidwayKeepsOldData() = runBlocking {
+        repo.saveAccount(acc("old")); repo.saveTransaction(tx("old-t", "old"))
+        repo.afterClearForTest = { error("falha simulada") }
+        val failed = runCatching { repo.replaceAll(backupSample()) }.isFailure
+        repo.afterClearForTest = null
+        assertTrue(failed)
+        val snap = repo.snapshot()
+        assertEquals(listOf("old"), snap.accounts.map { it.id })
+        assertEquals(listOf("old-t"), snap.transactions.map { it.id })
     }
 
     @Test fun deletingAccountRemovesTransfersBothWaysAndCanBeRestored() = runBlocking {

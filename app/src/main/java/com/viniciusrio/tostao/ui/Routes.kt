@@ -19,4 +19,5 @@ sealed interface Route {
     data class RuleForm(val id: String? = null) : Route
     data class BudgetForm(val id: String? = null) : Route
     data object Search : Route
+    data object Settings : Route
 }

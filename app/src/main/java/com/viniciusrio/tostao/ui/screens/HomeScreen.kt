@@ -15,8 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
@@ -58,6 +58,8 @@ import java.time.YearMonth
 @Composable
 fun HomeScreen(vm: MainViewModel, data: FinanceData, onAdd: () -> Unit) {
     val hidden by vm.hideValues.collectAsState()
+    val showReminder by vm.showBackupReminder.collectAsState()
+    val backupState by vm.backupState.collectAsState()
     val minute by vm.minute.collectAsState()
     val today = remember(minute) { vm.today() }
     val now = vm.nowMillis()
@@ -90,8 +92,8 @@ fun HomeScreen(vm: MainViewModel, data: FinanceData, onAdd: () -> Unit) {
                     )
                 }
                 IconButton(onClick = { vm.navigate(Route.Search) }) { Icon(Icons.Outlined.Search, "Buscar transações") }
-                IconButton(onClick = { vm.navigate(Route.Categories) }) { Icon(Icons.Outlined.Category, "Categorias") }
                 IconButton(onClick = { vm.navigate(Route.Accounts) }) { Icon(Icons.Outlined.AccountBalanceWallet, "Contas") }
+                IconButton(onClick = { vm.navigate(Route.Settings) }) { Icon(Icons.Outlined.Settings, "Configurações") }
             }
         }
 
@@ -136,6 +138,10 @@ fun HomeScreen(vm: MainViewModel, data: FinanceData, onAdd: () -> Unit) {
                     )
                 }
             }
+        }
+
+        if (showReminder) {
+            item { BackupReminderCard(vm, backupState.lastBackupAtMillis) }
         }
 
         item {

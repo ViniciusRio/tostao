@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.viniciusrio.tostao.domain.Limits
 import com.viniciusrio.tostao.domain.Category
 import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.FinanceData
@@ -96,7 +97,7 @@ fun CategoryFormScreen(vm: MainViewModel, data: FinanceData, id: String?, initia
             data.budgets.any { existing.id in it.categoryIds }
         )
     val typeLocked = inUse && existing!!.type != type
-    val valid = trimmed.length in 1..30 && !duplicate && !typeLocked
+    val valid = trimmed.length in 1..Limits.CATEGORY_NAME && !duplicate && !typeLocked
 
     Column(Modifier.fillMaxSize().imePadding()) {
         BackTopBar(if (existing == null) "Nova categoria" else "Editar categoria", vm::back) {
@@ -111,7 +112,7 @@ fun CategoryFormScreen(vm: MainViewModel, data: FinanceData, id: String?, initia
                 )
             }
             OutlinedTextField(
-                name, { name = it.take(30) }, label = { Text("Nome") }, singleLine = true, isError = duplicate,
+                name, { name = it.take(Limits.CATEGORY_NAME) }, label = { Text("Nome") }, singleLine = true, isError = duplicate,
                 supportingText = if (duplicate) ({ Text("Já existe uma categoria com esse nome") }) else null,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
             )
