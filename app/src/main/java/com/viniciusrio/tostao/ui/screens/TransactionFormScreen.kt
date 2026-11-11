@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +69,13 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
     var date by remember { mutableStateOf(start.toLocalDate()) }
     var time by remember { mutableStateOf(start.toLocalTime()) }
     var confirmDelete by remember { mutableStateOf(false) }
+    // Um toque só: um segundo toque em Salvar antes de a tela fechar não pode gravar de novo.
+    var saving by remember { mutableStateOf(false) }
+    // Id da nova transação fixado na primeira abertura e mantido na rotação: se Salvar for tocado
+    // de novo (ex.: depois de girar a tela durante a gravação), o upsert regrava a mesma transação.
+    val newId = rememberSaveable { existing?.id ?: vm.newId() }
+    val failures by vm.saveFailures.collectAsState()
+    LaunchedEffect(failures) { saving = false }
     var addingCategory by rememberSaveable { mutableStateOf(false) }
     // Categorias criadas pelo diálogo ("TIPO:id"): valem como seleção mesmo antes de o banco
     // devolvê-las na lista, inclusive se o usuário criar várias alternando entre despesa e receita.
@@ -95,10 +103,11 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
         (type != TxType.TRANSFER || (toAccountId != null && !sameAccount))
 
     val save = {
-        if (valid) {
+        if (valid && !saving) {
+            saving = true
             val millis = date.atTime(time).atZone(vm.zone).toInstant().toEpochMilli()
             val t = Transaction(
-                id = existing?.id ?: vm.newId(), type = type, amountCents = cents!!, accountId = accountId!!,
+                id = newId, type = type, amountCents = cents!!, accountId = accountId!!,
                 toAccountId = if (type == TxType.TRANSFER) toAccountId else null,
                 categoryId = if (type == TxType.TRANSFER) null else effectiveCategory,
                 title = title.trim(), note = note.trim(), dateTimeMillis = millis,

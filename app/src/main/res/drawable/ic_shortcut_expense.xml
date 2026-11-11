@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícone de atalho: glifo Material (CallMade) sobre círculo na cor do app. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="@color/launcher_bg"
+        android:pathData="M24,0A24,24 0,1 1,24,48A24,24 0,1 1,24,0Z" />
+    <group android:translateX="12" android:translateY="12">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M9,5v2h6.59L4,18.59 5.41,20 17,8.41V15h2V5z" />
+    </group>
+</vector>

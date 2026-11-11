@@ -6,11 +6,15 @@ Organizar receitas e despesas em categorias para orçamentos e relatórios.
 ## Requirements
 
 ### Requirement: Categorias padrão
-Na primeira abertura o app SHALL criar categorias padrão em pt-BR. Despesa: Alimentação, Mercado, Moradia, Transporte, Saúde, Educação, Lazer, Compras, Contas e serviços, Outros. Receita: Salário, Freelance, Rendimentos, Outros.
+Na primeira abertura depois da instalação o app SHALL criar categorias padrão em pt-BR. Despesa: Alimentação, Mercado, Moradia, Transporte, Saúde, Educação, Lazer, Compras, Contas e serviços, Outros. Receita: Salário, Freelance, Rendimentos, Outros. As categorias padrão MUST NOT ser recriadas depois, mesmo que o usuário exclua todas ou restaure um backup sem categorias.
 
 #### Scenario: Primeira abertura
 - **WHEN** o app é aberto pela primeira vez
 - **THEN** as categorias padrão existem e podem ser editadas ou excluídas
+
+#### Scenario: Backup sem categorias
+- **WHEN** o usuário restaura um backup sem categorias e reabre o app
+- **THEN** o app continua sem categorias
 
 ### Requirement: Manutenção de categorias
 O app SHALL permitir criar, editar e excluir categorias com nome (1 a 30 caracteres), tipo (receita ou despesa), cor e ícone. Nome MUST ser único dentro do mesmo tipo, ignorando maiúsculas.

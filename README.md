@@ -15,6 +15,7 @@ App Android de finanças pessoais, **local e offline**, em Kotlin + Jetpack Comp
 - **Relatórios** do mês sem precisar de filtro: totais, resultado, **gráfico de pizza por categoria** (toque para ver valor e percentual), **evolução dos últimos 6 meses** em barras, ranking por categoria e comparação com o mês anterior.
 - **Início**: saldo total, **saldo previsto no fim do mês**, receitas/despesas do mês, atrasados e próximos (até o fim do mês ou nos próximos 7 dias), recentes. Botão para **ocultar valores**.
 - **Backup e restauração** em arquivo JSON salvo onde você quiser (Drive, pasta Downloads, cartão), sem pedir permissão de armazenamento. A restauração valida o arquivo inteiro antes e troca os dados numa única transação: arquivo inválido não apaga nada. Lembrete discreto na Início quando o backup fica antigo.
+- **Atalhos de fora do app**: widget 1x1 "Nova despesa" e atalhos do ícone (Nova despesa, Nova receita, Transferência), que abrem um formulário leve e voltam para onde você estava ao salvar.
 - **Exportação CSV** das transações por período (tudo, ano, mês ou intervalo), no padrão brasileiro (`;`, vírgula decimal, UTF-8), pronta para Excel e Google Planilhas.
 
 ## Principais melhorias em relação ao original
@@ -57,4 +58,4 @@ Para levar os dados para outro celular: instale o Tostão nele, abra **Configura
 
 ## Fora do escopo
 
-Empréstimos, várias moedas, tags, importação CSV, widgets, bloqueio biométrico, sincronização e backup criptografado.
+Empréstimos, várias moedas, tags, importação CSV, widget de saldo, bloqueio biométrico, sincronização e backup criptografado.

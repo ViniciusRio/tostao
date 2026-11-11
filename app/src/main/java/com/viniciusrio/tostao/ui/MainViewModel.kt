@@ -27,6 +27,10 @@ import com.viniciusrio.tostao.domain.Transaction
 import com.viniciusrio.tostao.domain.TxType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -45,7 +49,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /** Mensagem única na tela; uma nova substitui a anterior (e o desfazer dela). */
-data class UiMessage(val id: Long, val text: String, val undo: (suspend () -> Unit)? = null, val epoch: Int = 0)
+/** [request]: pedido rápido em que a mensagem nasceu; o formulário rápido ignora as de outro pedido. */
+data class UiMessage(val id: Long, val text: String, val undo: (suspend () -> Unit)? = null, val epoch: Int = 0, val request: Int = 0)
 
 /** Operação de arquivo em andamento; enquanto houver uma, outra não começa. */
 enum class DataOp { Backup, Reading, Restore, Export }
@@ -211,8 +216,93 @@ class MainViewModel(
         }
     }
 
+    /** Gravação iniciada por um formulário, com o pedido rápido em que nasceu e a confirmação. */
+    /** [blocking]: uma falha impede o formulário rápido de fechar (a criação de categoria não bloqueia). */
+    private class PendingWrite(val request: Int, val result: Deferred<Boolean>, val blocking: Boolean = true) {
+        @Volatile var message: UiMessage? = null
+    }
+
+    /** Gravações iniciadas por formulários, cada uma com o próprio resultado (true = gravou). */
+    private val pendingWrites = mutableListOf<PendingWrite>()
+    private val _saveFailures = MutableStateFlow(0)
+
+    /** Conta falhas de gravação; o formulário usa para liberar o botão Salvar de novo. */
+    val saveFailures: StateFlow<Int> = _saveFailures.asStateFlow()
+
+    /**
+     * Espera as gravações pendentes do pedido [request]. Devolve a confirmação da última transação
+     * gravada se todas deram certo, ou null se alguma falhou. Gravações de um pedido anterior não
+     * seguram nem reprovam o atual.
+     */
+    private suspend fun awaitWrites(request: Int): Result<UiMessage?> {
+        val snapshot = pendingWrites.filter { it.request == request }
+        snapshot.map { it.result }.awaitAll()
+        // Todas terminam antes de fechar; só as que bloqueiam decidem se fecha. Uma categoria nova que
+        // falhou já foi tratada na transação (gravada sem categoria).
+        val ok = snapshot.filter { it.blocking }.all { it.result.getCompleted() }
+        pendingWrites.removeAll(snapshot)
+        return if (ok) Result.success(snapshot.lastOrNull { it.message != null }?.message) else Result.failure(IllegalStateException())
+    }
+
+    // Formulário rápido (QuickAddActivity). Tudo aqui vive no ViewModel para sobreviver à rotação.
+
+    /** Identidade do pedido atual; um novo toque no widget ou atalho cria outro. */
+    var quickRequest by androidx.compose.runtime.mutableIntStateOf(0)
+        private set
+
+    /** Pedido para a activity fechar, com a mensagem a mostrar como confirmação. */
+    data class QuickClose(val request: Int, val message: UiMessage?)
+
+    private val _quickClose = MutableStateFlow<QuickClose?>(null)
+    val quickClose: StateFlow<QuickClose?> = _quickClose.asStateFlow()
+    private var closing: Job? = null
+
+    fun startQuick(type: TxType, newRequest: Boolean) {
+        closing?.cancel()
+        closing = null
+        _quickClose.value = null
+        if (newRequest) quickRequest++
+        // Gravações já concluídas de pedidos anteriores não interessam mais a ninguém.
+        pendingWrites.removeAll { it.request != quickRequest && it.result.isCompleted }
+        backStack.clear()
+        backStack.add(Route.TxForm(type))
+        onRootBack = ::requestQuickClose
+    }
+
+    /** Fecha o formulário rápido só depois de gravar com sucesso; um fechamento por vez. */
+    private fun requestQuickClose() {
+        if (closing?.isActive == true) return
+        val request = quickRequest
+        closing = viewModelScope.launch {
+            val written = awaitWrites(request)
+            if (written.isSuccess && request == quickRequest) _quickClose.value = QuickClose(request, written.getOrNull())
+        }
+    }
+
+    /** Chamado quando o usuário volta da tela raiz; o formulário rápido usa para fechar. */
+    private var onRootBack: (() -> Unit)? = null
+
+    private fun track(blocking: Boolean = true, block: suspend (PendingWrite) -> Boolean): Deferred<Boolean> {
+        val request = quickRequest
+        lateinit var w: PendingWrite
+        val d = viewModelScope.async(start = kotlinx.coroutines.CoroutineStart.LAZY) { block(w) }
+        w = PendingWrite(request, d, blocking)
+        pendingWrites += w
+        // Fora do formulário rápido ninguém espera as gravações: sai da lista ao terminar.
+        // e no modo rápido, uma gravação de um pedido que já foi substituído também sai.
+        d.invokeOnCompletion { if (onRootBack == null || w.request != quickRequest) pendingWrites.remove(w) }
+        d.start()
+        return d
+    }
+
+    /** Categorias **novas** criadas por um formulário, por id (ids novos nunca se repetem). */
+    private val pendingCategories = mutableMapOf<String, Deferred<Boolean>>()
+
     fun back(): Boolean {
-        if (backStack.size <= 1) return false
+        if (backStack.size <= 1) {
+            onRootBack?.invoke()
+            return false
+        }
         backStack.removeAt(backStack.lastIndex)
         return true
     }
@@ -223,8 +313,8 @@ class MainViewModel(
         prefs.edit().putBoolean(KEY_HIDE, v).apply()
     }
 
-    fun say(text: String, undo: (suspend () -> Unit)? = null) {
-        _message.value = UiMessage(++messageSeq, text, undo, dataEpoch)
+    fun say(text: String, request: Int = quickRequest, undo: (suspend () -> Unit)? = null) {
+        _message.value = UiMessage(++messageSeq, text, undo, dataEpoch, request)
     }
 
     fun consumeMessage(id: Long) {
@@ -267,9 +357,26 @@ class MainViewModel(
     }
 
     // Categorias
-    fun saveCategory(c: Category, isNew: Boolean) = viewModelScope.launch {
-        repo.saveCategory(if (isNew) c.copy(order = repo.nextCategoryOrder()) else c)
-        say(if (isNew) "Categoria criada" else "Categoria salva")
+    // Rastreada como as transações: o formulário rápido só fecha (e o VM só morre) depois que a
+    // categoria criada no diálogo estiver gravada.
+    fun saveCategory(c: Category, isNew: Boolean): Deferred<Boolean> = track(blocking = !isNew) { w ->
+        try {
+            repo.saveCategory(if (isNew) c.copy(order = repo.nextCategoryOrder()) else c)
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            _saveFailures.value++
+            say("Não foi possível salvar a categoria", request = w.request)
+            return@track false
+        }
+        say(if (isNew) "Categoria criada" else "Categoria salva", request = w.request)
+        true
+    }.also { d ->
+        // Só categorias novas: a falha ao editar uma categoria existente não pode apagar a categoria
+        // das transações que já a usam.
+        if (!isNew) return@also
+        pendingCategories[c.id] = d
+        // Só sai do mapa se gravou: uma falha precisa continuar visível para a transação que vier depois.
+        d.invokeOnCompletion { cause -> if (cause == null && d.getCompleted() && pendingCategories[c.id] === d) pendingCategories.remove(c.id) }
     }
 
     fun deleteCategory(c: Category) = viewModelScope.launch {
@@ -278,17 +385,29 @@ class MainViewModel(
     }
 
     // Transações
-    fun saveTransaction(t: Transaction, isNew: Boolean) = viewModelScope.launch {
+    fun saveTransaction(t0: Transaction, isNew: Boolean): Deferred<Boolean> = track { w ->
+        // Categoria criada no próprio formulário: espera ela gravar. Se falhou, grava a transação
+        // sem categoria em vez de deixar um categoryId apontando para nada.
+        val categoryOk = t0.categoryId?.let { pendingCategories[it] }?.await() ?: true
+        val t = if (categoryOk) t0 else t0.copy(categoryId = null)
+        try {
+            repo.saveTransaction(t)
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            _saveFailures.value++
+            say("Não foi possível salvar a transação", request = w.request)
+            return@track false
+        }
         if (!t.isAdjustment) prefs.edit().putString(KEY_LAST_ACCOUNT, t.accountId).apply()
-        repo.saveTransaction(t)
-        say(
-            when {
-                !isNew -> "Transação salva"
-                t.type == TxType.INCOME -> "Receita registrada"
-                t.type == TxType.EXPENSE -> "Despesa registrada"
-                else -> "Transferência registrada"
-            },
-        )
+        val text = when {
+            !isNew -> "Transação salva"
+            t.type == TxType.INCOME -> "Receita registrada"
+            t.type == TxType.EXPENSE -> "Despesa registrada"
+            else -> "Transferência registrada"
+        }
+        say(if (categoryOk) text else "$text sem categoria", request = w.request)
+        w.message = _message.value
+        true
     }
 
     fun deleteTransaction(t: Transaction) = viewModelScope.launch {

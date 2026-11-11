@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -22,8 +23,30 @@ android {
         minSdk = 26
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+    }
+
+    // Assinatura de release lida de fora do repositório (keystore local, nunca commitada).
+    // Caminho padrão: ~/.android/tostao/keystore.properties; pode ser trocado por TOSTAO_KEYSTORE_PROPS.
+    val keystorePropsFile = file(
+        System.getenv("TOSTAO_KEYSTORE_PROPS")
+            ?: "${System.getProperty("user.home")}/.android/tostao/keystore.properties",
+    )
+    if (keystorePropsFile.exists()) {
+        val props = Properties().apply { keystorePropsFile.inputStream().use { load(it) } }
+        val missing = listOf("storeFile", "storePassword", "keyAlias", "keyPassword").filter { props.getProperty(it).isNullOrBlank() }
+        require(missing.isEmpty()) { "${keystorePropsFile.path}: faltam as chaves ${missing.joinToString()}" }
+        require(file(props.getProperty("storeFile")).exists()) { "${keystorePropsFile.path}: storeFile não encontrado (${props.getProperty("storeFile")})" }
+        signingConfigs {
+            create("release") {
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
     }
 
     compileOptions {
