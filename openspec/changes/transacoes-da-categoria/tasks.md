@@ -17,7 +17,7 @@
 
 - [x] 3.1 Testes unitários, `./gradlew :app:lintDebug` e build
 - [ ] 3.2 Conferir no aparelho: Mercado, Sem categoria, categoria em Outras, voltar mantendo mês/tipo, rotação, TalkBack com e sem valores ocultos
-- [ ] 3.3 Revisão do Codex (somente leitura) e correções
+- [x] 3.3 Revisão do Codex (somente leitura) e correções
 
 ## 4. Integração com o PR #5
 
