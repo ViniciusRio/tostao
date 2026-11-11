@@ -217,7 +217,8 @@ class MainViewModel(
     }
 
     /** Gravação iniciada por um formulário, com o pedido rápido em que nasceu e a confirmação. */
-    private class PendingWrite(val request: Int, val result: Deferred<Boolean>) {
+    /** [blocking]: uma falha impede o formulário rápido de fechar (a criação de categoria não bloqueia). */
+    private class PendingWrite(val request: Int, val result: Deferred<Boolean>, val blocking: Boolean = true) {
         @Volatile var message: UiMessage? = null
     }
 
@@ -235,7 +236,10 @@ class MainViewModel(
      */
     private suspend fun awaitWrites(request: Int): Result<UiMessage?> {
         val snapshot = pendingWrites.filter { it.request == request }
-        val ok = snapshot.map { it.result }.awaitAll().all { it }
+        snapshot.map { it.result }.awaitAll()
+        // Todas terminam antes de fechar; só as que bloqueiam decidem se fecha. Uma categoria nova que
+        // falhou já foi tratada na transação (gravada sem categoria).
+        val ok = snapshot.filter { it.blocking }.all { it.result.getCompleted() }
         pendingWrites.removeAll(snapshot)
         return if (ok) Result.success(snapshot.lastOrNull { it.message != null }?.message) else Result.failure(IllegalStateException())
     }
@@ -278,19 +282,20 @@ class MainViewModel(
     /** Chamado quando o usuário volta da tela raiz; o formulário rápido usa para fechar. */
     private var onRootBack: (() -> Unit)? = null
 
-    private fun track(block: suspend (PendingWrite) -> Boolean): Deferred<Boolean> {
+    private fun track(blocking: Boolean = true, block: suspend (PendingWrite) -> Boolean): Deferred<Boolean> {
         val request = quickRequest
         lateinit var w: PendingWrite
         val d = viewModelScope.async(start = kotlinx.coroutines.CoroutineStart.LAZY) { block(w) }
-        w = PendingWrite(request, d)
+        w = PendingWrite(request, d, blocking)
         pendingWrites += w
         // Fora do formulário rápido ninguém espera as gravações: sai da lista ao terminar.
-        d.invokeOnCompletion { if (onRootBack == null) pendingWrites.remove(w) }
+        // e no modo rápido, uma gravação de um pedido que já foi substituído também sai.
+        d.invokeOnCompletion { if (onRootBack == null || w.request != quickRequest) pendingWrites.remove(w) }
         d.start()
         return d
     }
 
-    /** Categorias criadas por um formulário e ainda gravando, por id. */
+    /** Categorias **novas** criadas por um formulário, por id (ids novos nunca se repetem). */
     private val pendingCategories = mutableMapOf<String, Deferred<Boolean>>()
 
     fun back(): Boolean {
@@ -354,7 +359,7 @@ class MainViewModel(
     // Categorias
     // Rastreada como as transações: o formulário rápido só fecha (e o VM só morre) depois que a
     // categoria criada no diálogo estiver gravada.
-    fun saveCategory(c: Category, isNew: Boolean): Deferred<Boolean> = track { w ->
+    fun saveCategory(c: Category, isNew: Boolean): Deferred<Boolean> = track(blocking = !isNew) { w ->
         try {
             repo.saveCategory(if (isNew) c.copy(order = repo.nextCategoryOrder()) else c)
         } catch (e: Exception) {
@@ -366,6 +371,9 @@ class MainViewModel(
         say(if (isNew) "Categoria criada" else "Categoria salva", request = w.request)
         true
     }.also { d ->
+        // Só categorias novas: a falha ao editar uma categoria existente não pode apagar a categoria
+        // das transações que já a usam.
+        if (!isNew) return@also
         pendingCategories[c.id] = d
         // Só sai do mapa se gravou: uma falha precisa continuar visível para a transação que vier depois.
         d.invokeOnCompletion { cause -> if (cause == null && d.getCompleted() && pendingCategories[c.id] === d) pendingCategories.remove(c.id) }
