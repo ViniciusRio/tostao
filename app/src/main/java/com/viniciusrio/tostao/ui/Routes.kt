@@ -18,6 +18,13 @@ sealed interface Route {
     data class CategoryForm(val id: String? = null, val type: CategoryType = CategoryType.EXPENSE) : Route
     data class RuleForm(val id: String? = null) : Route
     data class BudgetForm(val id: String? = null) : Route
+    /** Transações de uma categoria no mês e tipo do relatório. [categoryId] null = "Sem categoria"; [accountId] null = todas. */
+    data class CategoryTransactions(
+        val categoryId: String?,
+        val type: CategoryType,
+        val month: String, // YearMonth.toString()
+        val accountId: String? = null,
+    ) : Route
     data object Search : Route
     data object Settings : Route
 }

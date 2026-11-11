@@ -20,6 +20,7 @@ import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Balances
 import com.viniciusrio.tostao.domain.Budget
 import com.viniciusrio.tostao.domain.Category
+import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.PlannedRule
 import com.viniciusrio.tostao.ui.theme.ThemeMode
@@ -46,6 +47,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 
 /** Mensagem única na tela; uma nova substitui a anterior (e o desfazer dela). */
@@ -73,6 +75,12 @@ class MainViewModel(
     /** Aba de Planejamento (0 = planejados, 1 = orçamentos), mantida ao voltar de um formulário. */
     var planningTab by androidx.compose.runtime.mutableIntStateOf(0)
 
+    /** Mês de Relatórios (null = mês atual), mantido ao voltar de Transações da categoria. */
+    val reportMonth = MutableStateFlow<YearMonth?>(null)
+
+    /** Tipo de Relatórios (despesas ou receitas), mantido como [reportMonth]. */
+    val reportKind = MutableStateFlow(CategoryType.EXPENSE)
+
     private val _hideValues = MutableStateFlow(prefs.getBoolean(KEY_HIDE, false))
     val hideValues: StateFlow<Boolean> = _hideValues.asStateFlow()
 
@@ -91,6 +99,13 @@ class MainViewModel(
     /** Minuto atual; muda a cada minuto para recalcular saldos, atrasados e "hoje". */
     private val _minute = MutableStateFlow(clock.millis() / 60_000)
     val minute: StateFlow<Long> = _minute.asStateFlow()
+
+    /**
+     * Instante de corte de Relatórios e de Transações da categoria: renovado a cada minuto e a cada
+     * mudança de dados, e o mesmo valor nas duas telas, para o total da tela bater com a linha.
+     */
+    val reportAsOf: StateFlow<Long> = combine(data, _minute) { _, _ -> clock.millis() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, clock.millis())
 
     // Backup, restauração e exportação
     private val _dataOp = MutableStateFlow<DataOp?>(null)
@@ -210,6 +225,11 @@ class MainViewModel(
     // Navegação
     fun navigate(r: Route) {
         if (r is Route.Tab) {
+            // Mês e tipo de Relatórios só se preservam na ida e volta de uma rota filha; trocar de aba zera.
+            if (backStack.lastOrNull() != r) {
+                reportMonth.value = null
+                reportKind.value = CategoryType.EXPENSE
+            }
             backStack.clear(); backStack.add(r)
         } else {
             backStack.add(r)
@@ -297,6 +317,11 @@ class MainViewModel(
 
     /** Categorias **novas** criadas por um formulário, por id (ids novos nunca se repetem). */
     private val pendingCategories = mutableMapOf<String, Deferred<Boolean>>()
+
+    /** Troca a rota do topo sem empilhar (ex.: o mês escolhido em Transações da categoria). */
+    fun replaceTop(r: Route) {
+        if (backStack.isNotEmpty()) backStack[backStack.lastIndex] = r
+    }
 
     fun back(): Boolean {
         if (backStack.size <= 1) {

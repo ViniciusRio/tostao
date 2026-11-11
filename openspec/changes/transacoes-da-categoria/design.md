@@ -35,6 +35,8 @@ Reproduz exatamente o recorte e o agrupamento de `Reports.month`: intervalo de `
 
 Contrato de total: para quaisquer dados, mês, tipo e conta, a soma de `byCategory` MUST ser igual ao `totalCents` da linha correspondente de `Reports.month` com os mesmos parâmetros (ou zero, se a linha não existir). A tela recalcula a partir dos dados atuais, então o contrato vale também depois de trocar o mês ou editar uma transação. Testes cobrem isso.
 
+Instante de corte: Relatórios e a tela usam o mesmo `MainViewModel.reportAsOf`, renovado a cada minuto e a cada mudança de dados. Com chamadas separadas a `nowMillis()`, uma transação agendada que se efetivasse entre o cálculo da linha e a abertura da tela entraria só na tela.
+
 Subtotal por dia: nesta tela os itens são todos do mesmo tipo, então o subtotal do dia é a soma em valor absoluto, sem sinal, como o total do cabeçalho e a linha do relatório. Não reaproveita o `netCents` assinado de `groupByDay`.
 
 ### 4. Troca de mês dentro da tela
@@ -43,9 +45,12 @@ A tela tem `MonthSwitcher` próprio, iniciado no mês da rota. Trocar o mês ali
 ### 5. Relatórios lembra mês e tipo
 Mês e tipo de Relatórios saem do `rememberSaveable` local e vão para o `MainViewModel` como `MutableStateFlow` (`reportMonth`, `reportKind`). O `MainViewModel` não tem `SavedStateHandle` e a pilha de navegação vive só em memória. Resultado:
 - ida e volta e rotação: mês e tipo preservados (o ViewModel sobrevive);
+- trocar de aba pela barra inferior zera mês e tipo, como antes (só a ida e volta de uma rota filha preserva);
 - morte do processo: o app reabre em Início, como hoje para qualquer tela, e Relatórios volta ao mês atual. Restaurar pilha e estado após morte do processo fica fora do escopo.
 
-A seleção da fatia pode ser perdida na volta. O mês escolhido dentro da tela nova é local a ela (`rememberSaveable`).
+A seleção da fatia pode ser perdida na volta. Ao abrir uma categoria, o mês exibido em Relatórios é fixado em `reportMonth`, para que a virada do dia com a tela aberta não mude o mês na volta.
+
+O mês escolhido dentro da tela nova vive na própria rota (`month`, trocada no topo da pilha por `replaceTop`), não em `rememberSaveable`: sem `SaveableStateHolder`, o estado salvo se perde quando a tela sai da composição para a edição de uma transação. Assim o mês sobrevive à ida e volta da edição e à rotação, sem afetar Relatórios.
 
 Descartado: `SaveableStateHolder` em `FinanceRoot` para todas as rotas. Resolveria em geral, mas muda o comportamento das outras abas (hoje voltam ao mês atual) e é maior que o necessário.
 
