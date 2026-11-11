@@ -67,6 +67,8 @@ class QuickAddActivity : ComponentActivity() {
 
                 fun toast(m: com.viniciusrio.tostao.ui.UiMessage) {
                     if (m.id == toasted) return
+                    // Mensagem de uma gravação de outro pedido (ex.: o atalho tocado de novo no meio dela).
+                    if (m.request != vm.quickRequest) { vm.consumeMessage(m.id); return }
                     toasted = m.id
                     Toast.makeText(applicationContext, m.text, Toast.LENGTH_SHORT).show()
                     vm.consumeMessage(m.id)

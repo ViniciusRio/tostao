@@ -49,7 +49,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /** Mensagem única na tela; uma nova substitui a anterior (e o desfazer dela). */
-data class UiMessage(val id: Long, val text: String, val undo: (suspend () -> Unit)? = null, val epoch: Int = 0)
+/** [request]: pedido rápido em que a mensagem nasceu; o formulário rápido ignora as de outro pedido. */
+data class UiMessage(val id: Long, val text: String, val undo: (suspend () -> Unit)? = null, val epoch: Int = 0, val request: Int = 0)
 
 /** Operação de arquivo em andamento; enquanto houver uma, outra não começa. */
 enum class DataOp { Backup, Reading, Restore, Export }
@@ -257,6 +258,8 @@ class MainViewModel(
         closing = null
         _quickClose.value = null
         if (newRequest) quickRequest++
+        // Gravações já concluídas de pedidos anteriores não interessam mais a ninguém.
+        pendingWrites.removeAll { it.request != quickRequest && it.result.isCompleted }
         backStack.clear()
         backStack.add(Route.TxForm(type))
         onRootBack = ::requestQuickClose
@@ -281,9 +284,14 @@ class MainViewModel(
         val d = viewModelScope.async(start = kotlinx.coroutines.CoroutineStart.LAZY) { block(w) }
         w = PendingWrite(request, d)
         pendingWrites += w
+        // Fora do formulário rápido ninguém espera as gravações: sai da lista ao terminar.
+        d.invokeOnCompletion { if (onRootBack == null) pendingWrites.remove(w) }
         d.start()
         return d
     }
+
+    /** Categorias criadas por um formulário e ainda gravando, por id. */
+    private val pendingCategories = mutableMapOf<String, Deferred<Boolean>>()
 
     fun back(): Boolean {
         if (backStack.size <= 1) {
@@ -300,8 +308,8 @@ class MainViewModel(
         prefs.edit().putBoolean(KEY_HIDE, v).apply()
     }
 
-    fun say(text: String, undo: (suspend () -> Unit)? = null) {
-        _message.value = UiMessage(++messageSeq, text, undo, dataEpoch)
+    fun say(text: String, request: Int = quickRequest, undo: (suspend () -> Unit)? = null) {
+        _message.value = UiMessage(++messageSeq, text, undo, dataEpoch, request)
     }
 
     fun consumeMessage(id: Long) {
@@ -346,17 +354,21 @@ class MainViewModel(
     // Categorias
     // Rastreada como as transações: o formulário rápido só fecha (e o VM só morre) depois que a
     // categoria criada no diálogo estiver gravada.
-    fun saveCategory(c: Category, isNew: Boolean): Deferred<Boolean> = track {
+    fun saveCategory(c: Category, isNew: Boolean): Deferred<Boolean> = track { w ->
         try {
             repo.saveCategory(if (isNew) c.copy(order = repo.nextCategoryOrder()) else c)
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             _saveFailures.value++
-            say("Não foi possível salvar a categoria")
+            say("Não foi possível salvar a categoria", request = w.request)
             return@track false
         }
-        say(if (isNew) "Categoria criada" else "Categoria salva")
+        say(if (isNew) "Categoria criada" else "Categoria salva", request = w.request)
         true
+    }.also { d ->
+        pendingCategories[c.id] = d
+        // Só sai do mapa se gravou: uma falha precisa continuar visível para a transação que vier depois.
+        d.invokeOnCompletion { cause -> if (cause == null && d.getCompleted() && pendingCategories[c.id] === d) pendingCategories.remove(c.id) }
     }
 
     fun deleteCategory(c: Category) = viewModelScope.launch {
@@ -365,24 +377,27 @@ class MainViewModel(
     }
 
     // Transações
-    fun saveTransaction(t: Transaction, isNew: Boolean): Deferred<Boolean> = track { w ->
+    fun saveTransaction(t0: Transaction, isNew: Boolean): Deferred<Boolean> = track { w ->
+        // Categoria criada no próprio formulário: espera ela gravar. Se falhou, grava a transação
+        // sem categoria em vez de deixar um categoryId apontando para nada.
+        val categoryOk = t0.categoryId?.let { pendingCategories[it] }?.await() ?: true
+        val t = if (categoryOk) t0 else t0.copy(categoryId = null)
         try {
             repo.saveTransaction(t)
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             _saveFailures.value++
-            say("Não foi possível salvar a transação")
+            say("Não foi possível salvar a transação", request = w.request)
             return@track false
         }
         if (!t.isAdjustment) prefs.edit().putString(KEY_LAST_ACCOUNT, t.accountId).apply()
-        say(
-            when {
-                !isNew -> "Transação salva"
-                t.type == TxType.INCOME -> "Receita registrada"
-                t.type == TxType.EXPENSE -> "Despesa registrada"
-                else -> "Transferência registrada"
-            },
-        )
+        val text = when {
+            !isNew -> "Transação salva"
+            t.type == TxType.INCOME -> "Receita registrada"
+            t.type == TxType.EXPENSE -> "Despesa registrada"
+            else -> "Transferência registrada"
+        }
+        say(if (categoryOk) text else "$text sem categoria", request = w.request)
         w.message = _message.value
         true
     }
