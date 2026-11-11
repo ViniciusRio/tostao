@@ -5,7 +5,7 @@
 ### Requirement: Registrar transação
 O app SHALL registrar receita ou despesa com valor maior que zero (até R$ 999.999.999,99), conta, data e hora, categoria opcional, título opcional (até 60 caracteres) e observação opcional (até 500 caracteres). O valor MUST ser armazenado em centavos inteiros.
 
-O campo Valor do formulário de transação SHALL aceitar a soma de até 50 parcelas separadas por "+" (cada parcela no mesmo formato de um valor, ex.: `12,50+8,30+15`). Com mais de uma parcela, o app MUST mostrar o total junto do campo enquanto o usuário digita, e ao salvar MUST registrar uma única transação com o total. Um botão ao lado do campo MUST inserir "+" sem depender do teclado. Parcela vazia ou inválida torna o valor inválido, e o total MUST respeitar o mesmo limite de um valor digitado diretamente. Ao reabrir a transação para editar, o campo mostra o total, não as parcelas.
+O campo Valor do formulário de transação SHALL aceitar a soma de até 50 parcelas separadas por "+", cada uma no mesmo formato de um valor digitado sozinho (ex.: `12,50+8,30+15` ou `1.234,56+10`), ignorando espaços. Com mais de uma parcela, o app MUST mostrar o total junto do campo e, ao salvar, MUST registrar uma única transação com o total. Um botão ao lado do campo MUST inserir "+" na posição do cursor. Parcela vazia ("+" no início, no fim ou repetido) ou inválida, total zero ou acima do limite tornam o valor inválido. Ao editar, o campo mostra o total.
 
 #### Scenario: Despesa rápida
 - **WHEN** o usuário toca em "Despesa", digita 45,90, escolhe "Alimentação" e salva
@@ -27,6 +27,14 @@ O campo Valor do formulário de transação SHALL aceitar a soma de até 50 parc
 - **WHEN** o usuário digitou `12,50` e toca no botão "+" ao lado do campo
 - **THEN** o campo passa a `12,50+` e o teclado continua aberto para a próxima parcela
 
+#### Scenario: Formatos misturados
+- **WHEN** o usuário digita `1.234,56 + 10` ou cola `45.90+0,10`
+- **THEN** o total mostrado é R$ 1.244,56 ou R$ 46,00, respectivamente
+
+#### Scenario: Sinal repetido ou no início
+- **WHEN** o valor é `+12`, `12++3` ou `0+0`
+- **THEN** o campo indica valor inválido e o botão Salvar fica desabilitado
+
 #### Scenario: Total acima do limite
 - **WHEN** a soma das parcelas passa de R$ 999.999.999,99
 - **THEN** o campo indica valor inválido e não é possível salvar
@@ -34,7 +42,7 @@ O campo Valor do formulário de transação SHALL aceitar a soma de até 50 parc
 ### Requirement: Lista de transações
 Datas e horas de transações SHALL ser interpretadas no fuso atual do aparelho para agrupar por dia e por mês. O app SHALL listar transações efetivadas do mês selecionado, da mais recente para a mais antiga, agrupadas por dia com cabeçalho relativo ("Hoje", "Ontem" ou data como "17 de set."), mostrando o total do dia. Transações com a mesma data e hora MUST aparecer da lançada por último para a lançada primeiro. O usuário MUST poder navegar entre meses e filtrar por tipo, por conta e por categoria ou grupo de categorias.
 
-Com filtro de categoria ou de grupo, a lista SHALL mostrar só as transações daquela categoria, ou de qualquer categoria do grupo, e um resumo com o total filtrado do mês. Para grupo, o resumo MUST detalhar o total de cada categoria do grupo que teve movimento no mês. Os filtros combinam entre si (tipo, conta e categoria/grupo), e o filtro de categoria/grupo MUST oferecer "Sem categoria".
+Com filtro de categoria, de grupo ou "Sem categoria", a lista SHALL mostrar só receitas e despesas daquele item, sem transferências nem ajustes de saldo (as mesmas regras de Relatórios), e um resumo com o total de despesas e o de receitas do mês, cada um só quando houver. Para grupo, o resumo MUST detalhar cada categoria do grupo com movimento. O filtro combina com tipo e conta, e fica indisponível com o tipo "Transferências".
 
 #### Scenario: Navegar meses
 - **WHEN** o usuário toca na seta de mês anterior
@@ -47,6 +55,14 @@ Com filtro de categoria ou de grupo, a lista SHALL mostrar só as transações d
 #### Scenario: Filtrar por uma categoria
 - **WHEN** o usuário filtra pela categoria "Psicólogo"
 - **THEN** a lista mostra só as transações de Psicólogo e o resumo mostra o total delas no mês
+
+#### Scenario: Sem categoria não inclui transferências
+- **WHEN** o mês tem uma despesa sem categoria, uma transferência e um ajuste de saldo, e o usuário filtra por "Sem categoria"
+- **THEN** a lista mostra só a despesa sem categoria
+
+#### Scenario: Resumo igual ao relatório
+- **WHEN** Relatórios mostra Saúde com R$ 800,00 em novembro
+- **THEN** filtrar Transações de novembro por Saúde mostra o mesmo R$ 800,00 no resumo
 
 #### Scenario: Mesmo horário
 - **WHEN** o usuário lança duas despesas no mesmo minuto

@@ -28,52 +28,73 @@ Estado atual que molda o desenho:
 ## Decisions
 
 ### 1. Grupo como entidade própria, não como "categoria pai"
-Nova tabela `category_groups (id, name, type, colorArgb, icon, sortOrder)` e a coluna `categories.groupId TEXT NULL`, com `ForeignKey(onDelete = SET_NULL)` e índice.
-- **Alternativa descartada**: `categories.parentId` apontando para outra categoria. Nesse caso a categoria pai também poderia receber transações e o total do "pai" ficaria ambíguo (as transações dele mais as dos filhos?). Também seria preciso impedir ciclos e filhos de filhos. Uma entidade separada deixa claro que o grupo só agrega e torna a regra de um nível óbvia.
-- A FK com `SET_NULL` garante no banco a regra "excluir grupo deixa as categorias sem grupo". Mesmo assim, o repositório limpa `groupId` de forma explícita dentro da mesma transação, como já faz com `uncategorize*`, para não depender de `PRAGMA foreign_keys`.
+Nova tabela `category_groups (id, name, type, colorArgb, icon, sortOrder)` e a coluna `categories.groupId TEXT NULL` com índice, **sem chave estrangeira**. É o mesmo padrão de `transactions.categoryId` e `planned_rules.categoryId`, que também não têm FK: a integridade fica no repositório e na validação do backup.
+- **Alternativa descartada**: `categories.parentId` apontando para outra categoria. Nesse caso a categoria pai também poderia receber transações e o total do "pai" ficaria ambíguo. Também seria preciso impedir ciclos e filhos de filhos.
+- **Alternativa descartada**: `groupId` com FK `SET_NULL`. Declarar a FK por reconstrução de `categories` dispara o `ON DELETE CASCADE` de `budget_categories` (decisão 2). Seria possível declarar com `ADD COLUMN ... REFERENCES`, mas o projeto já não usa FK em `categoryId`, e a regra cabe numa única transação do repositório. Manter o padrão evita depender de `PRAGMA foreign_keys`.
+- O repositório mantém a regra "excluir grupo deixa as categorias sem grupo": limpa `groupId` e apaga o grupo na mesma transação de banco.
 
-### 2. Migração 1 → 2 manual
-Uma `Migration(1, 2)` com `CREATE TABLE category_groups ...` e a reconstrução de `categories`. O SQLite não aceita adicionar FK com `ALTER TABLE`, então o caminho é criar `categories_new`, copiar, apagar a antiga e renomear, preservando o índice e as FKs de `budget_categories`. Exportar `2.json` e validar com `MigrationTestHelper` no androidTest.
-- **Alternativa descartada**: `AutoMigration`. Ela não cobre a reconstrução com FK nova sem uma spec manual, e a migração manual fica explícita e testável.
+### 2. Migração 1 → 2 sem reconstruir tabelas
+`Migration(1, 2)` só acrescenta estrutura:
+```sql
+CREATE TABLE IF NOT EXISTS `category_groups` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL,
+  `colorArgb` INTEGER NOT NULL, `icon` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`id`));
+ALTER TABLE `categories` ADD COLUMN `groupId` TEXT;
+CREATE INDEX IF NOT EXISTS `index_categories_groupId` ON `categories` (`groupId`);
+```
+O SQL acima é um rascunho. O texto final MUST ser copiado do `2.json` exportado pelo Room (`createSql` das entidades e índices), para a validação de schema do Room passar.
+- **Por que não reconstruir `categories`**: a revisão reproduziu em SQLite que `DROP TABLE categories` com as FKs ativas apaga, por cascata, todas as linhas de `budget_categories`. Desligar as FKs com `PRAGMA foreign_keys=OFF` não funciona dentro da transação da migração. `ALTER TABLE ... ADD COLUMN` não toca nas linhas nem nas FKs existentes.
+- **Alternativa descartada**: `AutoMigration`. Ela gera o mesmo `ADD COLUMN`, mas a migração manual fica explícita e é testada da mesma forma.
 - Sem `fallbackToDestructiveMigration`: perder dados nunca é aceitável aqui.
+- **Teste obrigatório, executado e não só compilado**: `MigrationTestHelper` em `connectedDebugAndroidTest` (no aparelho ou no emulador). Ele cria o v1 com contas, categorias, transações, planejamentos e orçamentos com categorias, migra com validação de schema contra `2.json` e confere as contagens de todas as tabelas, inclusive `budget_categories`, o `groupId` nulo e `PRAGMA foreign_key_check` vazio.
 
-### 3. Domínio: `CategoryGroup` e agregação genérica
-- `CategoryGroup(id, name, type, colorArgb, icon, order)`. `Category` ganha `groupId: String? = null`. `FinanceData` ganha `groups` e `groupById`.
-- `Reports.month` mantém `expenseByCategory`/`incomeByCategory` e passa a calcular também `expenseByGroup`/`incomeByGroup: List<GroupSlice>`. Cada `GroupSlice` tem `group: CategoryGroup?` (null quando é uma categoria sem grupo), `category: Category?` (só nesse caso), `totalCents`, `percent` e `children: List<CategorySlice>`, com o percentual de cada filho calculado dentro do grupo.
-- `Charts.pie` passa a receber uma lista neutra de itens (`label`, `cents`, `color`, `key`) em vez de `CategorySlice`. Assim a regra de "Outras" e os percentuais são os mesmos nas duas visões, sem código duplicado. Os testes de `ChartsTest` são adaptados.
+### 3. Domínio: `CategoryGroup`, agregação e identidade das fatias
+- `CategoryGroup(id, name, type, colorArgb, icon, order)`, com `order` vindo de `nextGroupOrder()` (a ordem de criação). `Category` ganha `groupId: String? = null`. `FinanceData` ganha `groups` e `groupById`.
+- `Reports.month` mantém `expenseByCategory`/`incomeByCategory` e passa a calcular também `expenseByGroup`/`incomeByGroup: List<GroupSlice>`. Cada `GroupSlice` tem `key: CategoryScope` (`Group(id)`, `Category(id)` para categoria sem grupo, ou `None`), `label`, `colorArgb`, `icon`, `totalCents`, `percent` e `children: List<CategorySlice>`, com o percentual de cada filho calculado dentro do grupo.
+- `Charts.pie` passa a receber `List<ChartItem(key: CategoryScope, label, cents, colorArgb)>`. Ele devolve `PieSlice` com `keys: List<CategoryScope>` no lugar de `categories: List<Category?>`: uma chave por fatia comum e várias em "Outras". A visão por categoria monta os itens com `Category(id)`/`None`, e a visão por grupo, com as chaves acima.
+- **Seleção**: a tela guarda o `CategoryScope` selecionado. A fatia destacada é a que contém a chave, e a de um filho expandido é a do seu grupo. O centro mostra o nome, o valor e o percentual do item tocado, que pode ser o filho, sobre o total do tipo. Essas regras viram funções puras (`Charts.sliceIndexOf(pie, key, data)`) e ganham testes de seleção, não só de percentuais.
 - **Alternativa descartada**: calcular o agrupamento na tela. Ficaria sem teste e repetiria a lógica de percentuais.
 
 ### 4. Chave de seleção e filtro unificados
-Um tipo `CategoryScope` no domínio, `sealed`, com os casos `All`, `None` ("Sem categoria"), `Category(id)` e `Group(id)`, com `matches(t, data)`. Ele é usado em três lugares:
-- `TransactionFilter` ganha `scope: CategoryScope = All`.
-- `ReportsScreen` usa o scope como chave de seleção (substitui `cat:<id>`). Se o scope for de grupo, ele já serve direto para "Ver transações".
-- `Route.Transactions` ganha `month`, `type` e `scope` opcionais. Na rota, o scope é guardado como string estável (`all`, `none`, `cat:<id>`, `grp:<id>`) para continuar compatível com `rememberSaveable`.
-- O resumo do filtro (total e detalhamento por categoria) sai de uma função de domínio `TransactionQueries.scopeSummary(list, scope, data)`.
+Um tipo `CategoryScope` no domínio, `sealed`, com os casos `All`, `None` ("Sem categoria"), `Category(id)` e `Group(id)`, e com `matches(t, data)`.
+- **Semântica do filtro**: com scope diferente de `All`, só entram receitas e despesas, sem transferências e sem ajustes de saldo. São as mesmas regras de Relatórios, então o resumo bate com o valor mostrado lá. `None` significa receita ou despesa sem categoria.
+- **Resumo**: total de despesas e total de receitas do conjunto filtrado, cada um mostrado só quando for diferente de zero, com o sinal de Relatórios (despesa negativa). Num grupo, o detalhamento por categoria lista só as que tiveram movimento. Tudo vem de `TransactionQueries.scopeSummary(list, scope, data)`.
+- **Combinação**: o scope combina com o tipo e com a conta. Com o tipo "Transferências", o chip de categoria fica desabilitado e o scope volta para `All`.
+- **Rota**: `Route.Transactions` ganha `month`, `type` e `scope` opcionais, além do `accountId` que já existe. O scope é guardado como string estável (`all`, `none`, `cat:<id>`, `grp:<id>`) para continuar compatível com `rememberSaveable`. Se o id apontar para algo que não existe mais, ele volta para `all`.
+- **"Ver transações"** (Relatórios) passa mês, tipo, scope **e a conta do filtro de Relatórios, quando houver**. Isso vale independentemente da ordem em que este change e `relatorio-por-conta` forem implementados: o que for implementado por último liga a conta.
 
 ### 5. UI do filtro de categoria em Transações
 Um chip "Categoria: Todas ▾" numa terceira linha de filtros abre um `ModalBottomSheet` com "Todas", "Sem categoria", cada grupo do tipo atual (com as categorias dele recuadas embaixo) e depois as categorias sem grupo. Com o tipo "Todas" ou "Transferências", a lista mostra os dois tipos de categoria, separados por título. Escolher Transferências com scope de categoria é permitido, e o resultado é a lista vazia (transferência não tem categoria).
 - **Alternativa descartada**: mais uma `LazyRow` de chips. Com 15 ou mais categorias e grupos, a rolagem horizontal fica difícil e não mostra a hierarquia.
 
 ### 6. Soma no campo Valor
-- `Money.parseSum(input): Long?` divide por `+`, aceita até 50 parcelas, faz o parse de cada uma com `Money.parse` e recusa parcela vazia ou total acima de `MAX_CENTS`. Também há `Money.isSum(input)` para decidir se mostra o "= total".
-- `AmountField` ganha `allowSum: Boolean = false`. Com ele ligado, o filtro de entrada aceita `+`, o limite de caracteres sobe de 18 para 200, aparece um `trailingIcon` "Somar" (ícone Add, com descrição para leitor de tela) que acrescenta `+` e move o cursor para o fim, e o `supportingText` mostra "= R$ 35,80" quando há mais de uma parcela válida. O campo passa a usar `TextFieldValue` para controlar o cursor.
+- `Money.parseSum(input): Long?` remove os espaços, divide por `+` e faz o parse de cada parcela com `Money.parse`, aceitando os mesmos formatos de hoje (`1.234,56`, `45,9`, `45.90`, `1.234`). O resultado é inválido quando há `+` no início, no fim ou repetido (parcela vazia), mais de 50 parcelas, alguma parcela inválida, ou um total igual a zero ou acima de `MAX_CENTS`. Parcelas iguais a zero são aceitas desde que o total seja maior que zero. `Money.isSum(input)` diz se há mais de uma parcela.
+- `AmountField` ganha `allowSum: Boolean = false`. Com ele ligado:
+  - o filtro de entrada aceita `+`, o que também vale para texto colado, e o limite de caracteres passa de 18 para 800 (50 parcelas de até 15 caracteres mais os `+`);
+  - um `trailingIcon` "Somar" (ícone Add, com descrição para leitor de tela) insere `+` na posição do cursor e deixa o cursor depois dele, por isso o campo passa a usar `TextFieldValue`;
+  - o `supportingText` mostra "= R$ 35,80" quando há mais de uma parcela e a soma é válida.
 - Só o formulário de transação liga `allowSum`. O valor salvo é `parseSum(amount)`. Ao editar, o campo começa com `Money.plain(total)`, como hoje.
 - **Alternativa descartada**: uma calculadora própria em diálogo. Seria mais pesada e mudaria o fluxo rápido de lançamento, que o projeto escolheu de propósito (ver `docs/engenharia-reversa.md`, item 12).
 
 ### 7. Backup formato 2
-`FORMAT_VERSION = 2`. `BackupData.categoryGroups: List<CategoryGroupDto> = emptyList()` e `CategoryDto.groupId: String? = null`. Os padrões fazem um arquivo de formato 1 ser lido como "sem grupos". A validação ganha nomes únicos por tipo, referência existente e tipo igual. O `toDto` ordena os grupos por id, como as demais listas. A contagem da confirmação ganha "N grupos" quando N > 0.
+- `FORMAT_VERSION = 2`. `BackupData.categoryGroups: List<CategoryGroupDto> = emptyList()` e `CategoryDto.groupId: String? = null`, os dois com `@EncodeDefault(EncodeDefault.Mode.NEVER)`. Assim, sem grupos, o JSON não ganha campos novos.
+- **Impressão digital**: com os campos novos omitidos quando estão no padrão, a impressão digital de dados sem grupos é a mesma do formato 1. Atualizar o app não dispara o lembrete de backup sem que algo tenha mudado. Isso ganha um teste.
+- **Leitura condicionada à versão**: num arquivo que declara `formatVersion: 1`, `categoryGroups` e `groupId` são ignorados, mesmo se estiverem presentes, e a restauração fica sem grupos. Num arquivo de versão 2 eles são lidos e validados (nomes únicos por tipo, grupo existente, mesmo tipo da categoria).
+- O `toDto` ordena os grupos por id, como as demais listas. As transações mantêm a ordem de inserção (PR #4). A contagem da confirmação ganha "N grupos" quando N > 0.
+- A restauração continua atômica no `replaceAll`, que agora também limpa e insere `category_groups` na mesma transação.
 
 ### 8. Categorias e formulários
-- `CategoriesScreen` renderiza seções: cada grupo como cabeçalho clicável (abre o formulário do grupo), as categorias dele, e depois "Sem grupo". Um botão "Novo grupo" fica ao lado do "+" de categoria existente.
+**Pré-requisito**: o PR #4 (`fix/ajustes-release`), que cria o `NewCategoryDialog` no formulário de transação e de planejamento e mantém a categoria recém-criada como seleção pendente. Este change parte do `main` com o PR #4 já mesclado.
+- `CategoriesScreen` renderiza seções: cada grupo (pela ordem de criação) como cabeçalho clicável que abre o formulário do grupo, as categorias dele (por `order`), e depois "Sem grupo". Um botão "Novo grupo" fica ao lado do "+" de categoria.
 - `CategoryGroupFormScreen` (nova rota `Route.GroupForm(id, type)`) tem nome, tipo (travado depois de criado se o grupo tiver categorias), cor, ícone e a lista de categorias do tipo com checkbox. Ao salvar, `repo.saveGroup(group, memberIds)` grava numa transação de banco: o upsert do grupo, `groupId = null` em quem saiu e `groupId = id` em quem entrou (o que move a categoria de outro grupo).
 - `CategoryFormScreen` ganha a seção "Grupo" com chips ("Sem grupo" e os grupos do tipo). Trocar o tipo limpa o grupo escolhido.
-- O grupo é sempre o da categoria, e a transação não tem grupo próprio. Assim, ao agrupar uma categoria antiga, todas as transações dela passam a contar no grupo sem precisar editar uma por uma. Ter um grupo na transação foi descartado: abriria a possibilidade de transação e categoria discordarem, e cada lançamento antigo precisaria ser editado.
-- `CategoryChips` ganha a versão agrupada (título por grupo e as categorias sem grupo no fim), usada nos formulários de transação e de planejamento. Sem grupos, renderiza exatamente como hoje.
+- O grupo é sempre o da categoria, e a transação não tem grupo próprio. Assim, ao agrupar uma categoria antiga, todas as transações dela passam a contar no grupo sem precisar editar uma por uma. Ter um grupo na transação foi descartado: abriria a possibilidade de transação e categoria discordarem.
+- **Seletor agrupado nos formulários**: sem grupos, ele fica idêntico ao de hoje, com as usadas recentemente primeiro e depois por `order`. Com grupos, cada seção (grupo ou "Sem grupo") mantém essa mesma regra dentro dela. As seções de grupo são ordenadas pelo uso mais recente de qualquer categoria do grupo (e, no empate, pela ordem de criação), e "Sem grupo" vem por último.
 - O diálogo "Nova categoria" do formulário ganha a escolha de grupo (padrão "Sem grupo").
 
 ## Risks / Trade-offs
 
-- [A migração reconstrói `categories`, e um erro pode apagar categorias ou quebrar as FKs de `budget_categories`] → teste de migração com dados reais (categorias, orçamento com categorias, transações) verificando contagens e junções depois de migrar. O app só é publicado com esse teste passando.
+- [Uma migração errada perde dados reais] → a migração só faz `CREATE TABLE`/`ADD COLUMN`/`CREATE INDEX` (sem reconstrução), e o teste de migração é executado no aparelho (`connectedDebugAndroidTest`) com contagens de todas as tabelas e `foreign_key_check`. O app só é publicado com esse teste passando.
+- [`groupId` sem FK pode apontar para um grupo apagado] → `deleteGroup` limpa `groupId` na mesma transação. A leitura trata um grupo inexistente como "Sem grupo", e a validação do backup recusa esse caso no arquivo.
 - [Um backup de formato 2 aberto numa versão antiga do app é recusado como "versão mais nova"] → é o comportamento esperado do spec atual. A mensagem já orienta a atualizar o app.
 - [A tecla "+" no teclado `Decimal` varia por fabricante] → o botão "Somar" no próprio campo não depende do teclado.
 - [Mudar `Charts.pie` para itens genéricos pode alterar a pizza por categoria] → os testes atuais de `ChartsTest` continuam valendo, adaptados à nova entrada sem mudar os resultados esperados.

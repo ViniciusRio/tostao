@@ -37,7 +37,7 @@ Cada categoria SHALL pertencer a no máximo um grupo, e só a um grupo do mesmo 
 - **THEN** ela sai do grupo e fica "Sem grupo"
 
 ### Requirement: Lista de categorias por grupo
-Em Configurações > Categorias, o app SHALL mostrar, para o tipo selecionado, cada grupo (em ordem de criação, com nome e quantidade de categorias) seguido das suas categorias, e depois as categorias sem grupo. Tocar no grupo MUST abrir a edição do grupo; tocar numa categoria MUST abrir a edição da categoria.
+Em Configurações > Categorias, o app SHALL mostrar, para o tipo selecionado, cada grupo (na ordem em que foram criados, com nome e quantidade de categorias) seguido das suas categorias na ordem atual das categorias, e depois as categorias sem grupo. Tocar no grupo MUST abrir a edição do grupo; tocar numa categoria MUST abrir a edição da categoria.
 
 #### Scenario: Sem grupos
 - **WHEN** o usuário não criou nenhum grupo
@@ -68,8 +68,15 @@ Ao atualizar o app para a versão com grupos, todas as contas, categorias, trans
 - **WHEN** depois de atualizar o usuário coloca a categoria antiga "Psicólogo" no grupo "Saúde"
 - **THEN** todas as transações já existentes de Psicólogo passam a contar no grupo Saúde, sem editar uma por uma
 
+### Requirement: Grupo da transação vem da categoria
+O grupo de uma transação SHALL ser sempre o grupo da sua categoria. Para mudar o grupo de uma transação, o usuário escolhe outra categoria ou muda o grupo da categoria.
+
+#### Scenario: Trocar a categoria
+- **WHEN** uma despesa em "Psicólogo" (grupo Saúde) é editada para a categoria "Lazer" (sem grupo)
+- **THEN** ela deixa de contar em Saúde e passa a contar como Lazer
+
 ### Requirement: Grupo a partir do formulário de transação
-No formulário de transação (e de planejamento), o seletor de categoria SHALL mostrar as categorias organizadas por grupo, com o nome de cada grupo como título e as categorias sem grupo no final. O diálogo "Nova categoria" desse formulário MUST permitir escolher um grupo existente do mesmo tipo ou "Sem grupo" (padrão). O grupo de uma transação MUST ser sempre o grupo da sua categoria: para mudar o grupo de uma transação, o usuário escolhe outra categoria ou muda o grupo da categoria.
+No formulário de transação (e de planejamento), o seletor de categoria SHALL mostrar as categorias organizadas por grupo, com o nome de cada grupo como título e as categorias sem grupo no final. Dentro de cada seção, as usadas recentemente vêm primeiro; os grupos são ordenados pelo uso mais recente de qualquer categoria sua. O diálogo "Nova categoria" desse formulário MUST permitir escolher um grupo existente do mesmo tipo ou "Sem grupo" (padrão).
 
 #### Scenario: Escolher categoria por grupo
 - **WHEN** existem os grupos Saúde e Contas básicas e o usuário abre uma nova despesa

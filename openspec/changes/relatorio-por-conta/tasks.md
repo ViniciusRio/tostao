@@ -2,7 +2,7 @@
 
 ## 1. Domínio
 
-- [ ] 1.1 `Reports.month(..., accountId: String? = null)` e `Charts.trend(..., accountId: String? = null)`: com a conta, filtrar receitas/despesas por `accountId` no mês e no mês anterior. Verificar com testes em `BudgetsAndReportsTest`/`ChartsTest`: cenário BTG R$ 300,00 / Pix R$ 200,00, transferência BTG→Pix fora dos dois, evolução por conta, e os testes atuais sem conta passando sem mudança.
+- [ ] 1.1 `Reports.month(..., accountId: String? = null)` e `Charts.trend(..., accountId: String? = null)`: com a conta, filtrar receitas/despesas por `accountId` no mês e no mês anterior. Verificar com testes em `BudgetsAndReportsTest`/`ChartsTest`: cenário BTG R$ 300,00 / Pix R$ 200,00, transferência BTG→Pix fora dos dois, ajuste de saldo fora, conta fora do saldo total incluída em "Todas", evolução por conta, e os testes atuais sem conta passando sem mudança.
 
 ## 2. Tela
 
@@ -11,4 +11,4 @@
 
 ## Workflow follow-up
 
-- Se o change `grupos-categorias-e-soma-no-valor` for implementado depois deste, a ação "Ver transações" de lá deve levar também a conta escolhida no relatório (o filtro de conta de Transações já existe).
+- A ação "Ver transações" (change `grupos-categorias-e-soma-no-valor`) leva a conta escolhida aqui; isso está no requisito daquele change, e quem for implementado por último faz a ligação.

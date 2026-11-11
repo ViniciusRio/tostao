@@ -25,6 +25,14 @@ A tela Relatórios SHALL oferecer um filtro de conta com "Todas as contas" (padr
 - **WHEN** o usuário transferiu R$ 100,00 do BTG para o Pix e filtra por qualquer uma das duas
 - **THEN** a transferência não entra como receita nem como despesa da conta
 
+#### Scenario: Conta fora do saldo total
+- **WHEN** existe a conta "Investimentos", marcada para não entrar no saldo total, com despesas no mês
+- **THEN** "Todas as contas" inclui essas despesas, como hoje, e o chip "Investimentos" mostra só elas
+
+#### Scenario: Ajuste de saldo na conta
+- **WHEN** o Pix teve um ajuste de saldo de R$ 20,00 no mês e o relatório está filtrado por Pix
+- **THEN** o ajuste não entra nas receitas nem nas despesas do Pix
+
 #### Scenario: Conta excluída
 - **WHEN** o relatório está filtrado por uma conta e ela é excluída
 - **THEN** o filtro volta para "Todas as contas"
