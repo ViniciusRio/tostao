@@ -65,3 +65,11 @@ Sem nenhuma conta cadastrada, o widget e os atalhos SHALL abrir o app no cadastr
 #### Scenario: App já aberto sem conta
 - **WHEN** o app já está aberto no cadastro de conta e o usuário toca no widget
 - **THEN** o app volta a esse cadastro sem empilhar um segundo formulário de conta
+
+#### Scenario: Categoria nova que falha ao gravar
+- **WHEN** o usuário cria uma categoria no formulário rápido, salva a transação e a gravação da categoria falha
+- **THEN** a transação é gravada sem categoria, com o aviso "Despesa registrada sem categoria", e o formulário fecha
+
+#### Scenario: Novo atalho durante uma gravação
+- **WHEN** uma gravação do formulário rápido ainda está em andamento e o usuário toca de novo num atalho ou no widget
+- **THEN** o formulário novo abre limpo, só fecha com a própria gravação e não mostra a confirmação da gravação anterior
