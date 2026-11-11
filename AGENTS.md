@@ -3,13 +3,13 @@
 App Android de finanças pessoais, offline, em pt-BR. Kotlin, Jetpack Compose (Material 3) e Room. Sem servidor e sem conta.
 
 ## Fluxo de trabalho
-Segue `~/projects/personal/ai-docs/boas-praticas-ia.md`. Na prática:
-- Uma mudança relevante começa por um change OpenSpec (`/openspec-propose`). O Codex faz a revisão adversarial da spec, somente leitura, **antes** do código, e o Vinícius aprova.
+As regras abaixo valem por si (o documento de origem fica fora do repositório):
+- Uma mudança relevante começa por um change OpenSpec (`proposal.md`, `design.md`, `tasks.md`, specs). O Codex faz a revisão adversarial da spec, somente leitura, **antes** do código, e o Vinícius aprova. Tarefas triviais (typo, ajuste de uma linha) pulam a spec.
 - Crie a branch (`feat/...`, `fix/...`, `docs/...`) **antes** da primeira edição. Nunca trabalhe na `main`.
 - Marque o progresso no `tasks.md` do change.
 - **Pronto** = lint, testes e build verdes, rodados pelo implementador.
 - O handoff vai na descrição do PR: Objetivo, Branch e commit, Arquivos alterados, Decisões, Checagens rodadas, Dúvidas em aberto, Próxima ação.
-- O Codex revisa o diff do PR em modo somente leitura e classifica cada achado como Bloqueante ou Sugestão, registrado em comentário no PR. São no máximo 2 rodadas.
+- O Codex revisa o diff do PR em modo somente leitura e classifica cada achado como Bloqueante (volta para correção) ou Sugestão (não bloqueia), registrado em comentário no PR. A 2ª rodada confere cada achado original contra o diff corrigido. São no máximo 2 rodadas; depois disso, o Vinícius decide.
 - Só o Vinícius faz merge. A `main` é protegida e exige PR.
 - Commits seguem Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`), com o trailer `Co-Authored-By`.
 - Atualize o `STATUS.md` ao parar.
@@ -20,15 +20,15 @@ Segue `~/projects/personal/ai-docs/boas-praticas-ia.md`. Na prática:
 ./gradlew :app:assembleDebug                # build
 ./gradlew :app:lintDebug                    # lint (relatório em app/build/reports/)
 ./gradlew :app:compileDebugAndroidTestKotlin
-./gradlew :app:connectedDebugAndroidTest    # Room/migrações; precisa de aparelho ou emulador
+./gradlew :app:connectedDebugAndroidTest    # testes instrumentados (hoje: repositório com banco em memória); precisa de aparelho ou emulador
 ./gradlew :app:installDebug
 openspec validate <change>
 ```
 
 ## Estrutura (`app/src/main/java/com/viniciusrio/tostao/`)
-- `domain/`: regras puras e testáveis (saldos, relatórios, gráficos, recorrência, dinheiro, backup/CSV). A lógica nova vai aqui, com teste em `app/src/test`.
-- `data/`: Room (`Entities`, `FinanceDao`, `FinanceDatabase`), `FinanceRepository`, `DataTransferService`. O schema é exportado em `app/schemas/`.
-- `ui/`: `FinanceRoot` (navegação por `backStack` e `Route`), `MainViewModel`, `screens/`, `components/`, `theme/`.
+- `domain/`: regras puras e testáveis. A lógica nova vai aqui, com teste em `app/src/test`.
+- `data/`: Room e repositório. O schema é exportado em `app/schemas/`.
+- `ui/`: Compose; a navegação é uma pilha própria (`MainViewModel.backStack` + `Route`), sem Navigation Compose e sem `SaveableStateHolder`.
 - `openspec/specs/`: comportamento vigente. `openspec/changes/`: mudanças em andamento.
 
 ## Convenções
@@ -41,8 +41,8 @@ openspec validate <change>
 
 ## Correções recorrentes
 - Não implemente na `main` "só para testar": crie a branch antes.
-- Dispare a revisão do Codex sem esperar o pedido, na spec e no diff (agente `codex:codex-rescue`, somente leitura).
-- Migrações do Room: nunca use `fallbackToDestructiveMigration`. Não reconstrua uma tabela referenciada por FK com `ON DELETE CASCADE` (`DROP TABLE categories` apaga `budget_categories`). Prefira `ADD COLUMN` e execute o teste de migração, não basta compilar.
+- A revisão do Codex é disparada pelo implementador sem esperar o pedido, na spec e no diff, sempre somente leitura.
+- Migrações do Room: nunca use `fallbackToDestructiveMigration`. Não reconstrua uma tabela referenciada por FK com `ON DELETE CASCADE` (`DROP TABLE categories` apaga `budget_categories`). Prefira `ADD COLUMN`. Toda migração exige um teste de migração próprio (`MigrationTestHelper` a partir do schema exportado), rodado no aparelho; hoje não existe nenhum, e `connectedDebugAndroidTest` sozinho não cobre migração.
 - Ordem da lista de transações: o empate de horário usa o `rowid`. O snapshot e o backup preservam a ordem de inserção.
 - Um id criado de forma assíncrona (ex.: nova categoria) precisa valer como seleção antes de o Flow do Room emiti-lo.
 - Há usuário com dados reais na versão release. A atualização tem de ser instalada por cima, com a mesma chave de assinatura, e com o `versionCode` incrementado.
