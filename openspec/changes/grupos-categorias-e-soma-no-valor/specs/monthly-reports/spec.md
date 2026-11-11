@@ -17,6 +17,10 @@ Quando existir ao menos um grupo do tipo selecionado, Relatórios SHALL oferecer
 - **WHEN** não existe grupo de despesa
 - **THEN** a escolha "Por categoria"/"Por grupo" não aparece e o relatório é o atual
 
+#### Scenario: Receita em categoria de despesa agrupada
+- **WHEN** há uma receita de R$ 50,00 na categoria Psicólogo (despesa, grupo Saúde) e o usuário vê Receitas "Por grupo"
+- **THEN** ela aparece como item próprio "Psicólogo", fora de qualquer grupo
+
 #### Scenario: Grupo sem movimento
 - **WHEN** o grupo "Contas básicas" não teve despesas no mês
 - **THEN** ele não aparece na pizza nem na lista daquele mês
