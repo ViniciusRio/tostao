@@ -66,6 +66,9 @@ fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Rout
     val total = txs.sumOf { it.amountCents }
     val count = txs.size
     val countText = if (count == 1) "1 transação" else "$count transações"
+    // Aberta de Relatórios filtrado por conta: o nome da conta explica o recorte do total.
+    val accountName = route.accountId?.let { data.accountById[it]?.name }
+    val subtitle = if (accountName != null) "$countText · $accountName" else countText
     val noun = if (route.type == CategoryType.EXPENSE) "despesa" else "receita"
 
     Column(Modifier.fillMaxSize()) {
@@ -75,7 +78,7 @@ fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Rout
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
                         .clearAndSetSemantics {
-                            contentDescription = "$name, ${if (hidden) "valor oculto" else Money.format(total)}, $countText"
+                            contentDescription = "$name, ${if (hidden) "valor oculto" else Money.format(total)}, $subtitle"
                         },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -84,7 +87,7 @@ fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Rout
                     Column(Modifier.weight(1f)) {
                         Text(name, style = MaterialTheme.typography.titleMedium)
                         Text(
-                            countText, style = MaterialTheme.typography.bodyMedium,
+                            subtitle, style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }

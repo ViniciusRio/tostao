@@ -30,13 +30,20 @@ data class MonthReport(
 }
 
 object Reports {
-    /** Apenas transações efetivadas (até [nowMillis]) entram. */
-    fun month(data: FinanceData, month: YearMonth, zone: ZoneId, nowMillis: Long): MonthReport {
+    /**
+     * Apenas transações efetivadas (até [nowMillis]) entram. [accountId] null = todas as contas
+     * (inclusive as fora do saldo total); com a conta, só as receitas e despesas lançadas nela,
+     * no mês e no mês anterior. Transferências e ajustes de saldo nunca entram.
+     */
+    fun month(data: FinanceData, month: YearMonth, zone: ZoneId, nowMillis: Long, accountId: String? = null): MonthReport {
+        val inAccount = { t: Transaction -> accountId == null || t.accountId == accountId }
         val range = Periods.monthRange(month, zone)
-        val txs = data.transactions.filter { it.type != TxType.TRANSFER && !it.isAdjustment && it.dateTimeMillis in range && it.dateTimeMillis <= nowMillis }
+        val txs = data.transactions.filter {
+            it.type != TxType.TRANSFER && !it.isAdjustment && it.dateTimeMillis in range && it.dateTimeMillis <= nowMillis && inAccount(it)
+        }
         val prevRange = Periods.monthRange(month.minusMonths(1), zone)
         val prevExpense = data.transactions
-            .filter { it.type == TxType.EXPENSE && !it.isAdjustment && it.dateTimeMillis in prevRange && it.dateTimeMillis <= nowMillis }
+            .filter { it.type == TxType.EXPENSE && !it.isAdjustment && it.dateTimeMillis in prevRange && it.dateTimeMillis <= nowMillis && inAccount(it) }
             .sumOf { it.amountCents }
         val income = txs.filter { it.type == TxType.INCOME }
         val expense = txs.filter { it.type == TxType.EXPENSE }
