@@ -3,6 +3,7 @@ package com.viniciusrio.tostao.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -226,6 +227,7 @@ private fun statusOnly(s: BudgetStatus) = when (s) {
     BudgetStatus.EXCEEDED -> "Limite excedido"
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
     val existing = remember(id) { id?.let { i -> data.rules.firstOrNull { it.id == i } } }
@@ -245,10 +247,16 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
     var hasEnd by rememberSaveable { mutableStateOf(existing?.endDate != null) }
     var end by remember { mutableStateOf(existing?.endDate ?: today.plusYears(1)) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var addingCategory by rememberSaveable { mutableStateOf(false) }
+    // Categorias criadas pelo diálogo ("TIPO:id"): valem como seleção mesmo antes de o banco
+    // devolvê-las na lista, inclusive se o usuário criar várias alternando entre despesa e receita.
+    var createdCategories by rememberSaveable { mutableStateOf(listOf<String>()) }
 
     val catType = if (type == TxType.INCOME) CategoryType.INCOME else CategoryType.EXPENSE
     val cats = data.categories.filter { it.type == catType }
-    val effectiveCategory = categoryId?.takeIf { c -> cats.any { it.id == c } }
+    val effectiveCategory = categoryId?.takeIf { c ->
+        cats.any { it.id == c } || "${catType.name}:$c" in createdCategories
+    }
     val cents = Money.parse(amount)
     val n = interval.toIntOrNull()
     val endOk = !hasEnd || unit == null || !end.isBefore(start)
@@ -269,11 +277,13 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
             SectionHeader("Conta")
             AccountChips(data.accounts, accountId, { accountId = it })
             SectionHeader("Categoria")
-            CategoryChips(cats, setOfNotNull(effectiveCategory)) { c -> categoryId = if (effectiveCategory == c) null else c }
+            CategoryChips(cats, setOfNotNull(effectiveCategory), onAdd = { addingCategory = true }) { c ->
+                categoryId = if (effectiveCategory == c) null else c
+            }
             SectionHeader("Quando")
             DateButton(if (unit == null) "Data" else "Primeira", start, today, { start = it }, Modifier.padding(horizontal = 20.dp))
             SectionHeader("Repetir")
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FlowRow(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(null to "Não", RecurrenceUnit.DAY to "Dias", RecurrenceUnit.WEEK to "Semanas", RecurrenceUnit.MONTH to "Meses", RecurrenceUnit.YEAR to "Anos")
                     .forEach { (u, label) -> FilterChip(unit == u, { unit = u }, { Text(label) }) }
             }
@@ -316,6 +326,13 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
             },
             modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 56.dp),
         ) { Text("Salvar") }
+    }
+    if (addingCategory) {
+        NewCategoryDialog(vm, data, catType, onDismiss = { addingCategory = false }) { id ->
+            createdCategories = createdCategories + "${catType.name}:$id"
+            categoryId = id
+            addingCategory = false
+        }
     }
     if (confirmDelete && existing != null) {
         ConfirmDialog(

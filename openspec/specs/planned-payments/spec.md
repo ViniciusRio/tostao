@@ -43,7 +43,7 @@ Ao pagar uma ocorrência, o app SHALL criar uma transação efetivada com os dad
 - **THEN** a regra sai de Próximos/Atrasados e aparece como concluída na lista de planejados
 
 ### Requirement: Atrasados e próximos
-O app SHALL classificar como "Atrasado" a ocorrência com data anterior a hoje e como "Próximo" a que vence de hoje até 30 dias, mostrando data relativa ("vence hoje", "em 3 dias", "há 5 dias") e totais de cada grupo.
+O app SHALL classificar como "Atrasado" a ocorrência com data anterior a hoje e como "Próximo" a que vence de hoje até o fim do mês atual ou nos próximos 7 dias (assim, ao pagar a conta mensal, a do mês seguinte só reaparece perto do vencimento), mostrando data relativa ("vence hoje", "em 3 dias", "há 5 dias") e totais de cada grupo.
 
 #### Scenario: Vence hoje
 - **WHEN** a próxima ocorrência é hoje

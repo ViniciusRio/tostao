@@ -44,4 +44,15 @@ class TransactionQueriesTest {
         assertEquals("Novembro", Periods.monthLabel(YearMonth.of(2026, 11), today))
         assertEquals("Março de 2025", Periods.monthLabel(YearMonth.of(2025, 3), today))
     }
+
+    @Test fun sameTimeKeepsRepositoryOrderSoLastAddedStaysOnTop() {
+        // O repositório entrega as transações da mais recém-inserida para a mais antiga.
+        val at = millis(2026, 11, 10)
+        val older = tx(TxType.EXPENSE, 100, "a", at)
+        val newer = tx(TxType.EXPENSE, 200, "a", at)
+        val data = FinanceData(accounts = listOf(account("a", 0)), transactions = listOf(newer, older))
+        val list = TransactionQueries.filtered(data, TransactionFilter(YearMonth.of(2026, 11)), ZONE, at)
+        assertEquals(listOf(newer.id, older.id), list.map { it.id })
+        assertEquals(listOf(newer.id, older.id), TransactionQueries.groupByDay(list, ZONE, LocalDate.of(2026, 11, 10))[0].items.map { it.id })
+    }
 }

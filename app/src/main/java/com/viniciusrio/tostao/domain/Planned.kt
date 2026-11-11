@@ -1,6 +1,7 @@
 package com.viniciusrio.tostao.domain
 
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.temporal.ChronoUnit
 
 data class DueItem(val rule: PlannedRule, val dueDate: LocalDate, val daysFromToday: Long)
@@ -14,15 +15,23 @@ data class PlannedOverview(
 }
 
 object Planned {
-    const val UPCOMING_DAYS = 30L
+    /** Folga para mostrar, perto da virada, o que vence no começo do mês seguinte. */
+    const val UPCOMING_DAYS = 7L
 
+    /**
+     * Atrasados e próximos. "Próximos" são as ocorrências que vencem até o fim do mês de [today]
+     * ou nos próximos [UPCOMING_DAYS] dias. Assim, ao pagar a conta mensal deste mês, a
+     * ocorrência do mês seguinte só volta a aparecer quando estiver perto.
+     */
     fun overview(rules: List<PlannedRule>, today: LocalDate): PlannedOverview {
         val items = rules.mapNotNull { r ->
             Recurrence.nextDue(r)?.let { DueItem(r, it, ChronoUnit.DAYS.between(today, it)) }
         }.sortedBy { it.dueDate }
         return PlannedOverview(
             overdue = items.filter { it.daysFromToday < 0 },
-            upcoming = items.filter { it.daysFromToday in 0..UPCOMING_DAYS },
+            upcoming = items.filter {
+                it.daysFromToday >= 0 && (it.daysFromToday < UPCOMING_DAYS || YearMonth.from(it.dueDate) == YearMonth.from(today))
+            },
         )
     }
 

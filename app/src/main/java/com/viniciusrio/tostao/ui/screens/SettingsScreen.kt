@@ -62,6 +62,7 @@ import com.viniciusrio.tostao.ui.MainViewModel
 import com.viniciusrio.tostao.ui.Route
 import com.viniciusrio.tostao.ui.components.BackTopBar
 import com.viniciusrio.tostao.ui.components.SectionHeader
+import com.viniciusrio.tostao.ui.theme.ThemeMode
 import java.time.Instant
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -94,6 +95,25 @@ fun SettingsScreen(vm: MainViewModel, data: FinanceData) {
     Column(Modifier.fillMaxSize()) {
         BackTopBar("Configurações", vm::back)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            SectionHeader("Aparência", Modifier.semantics { heading() })
+            val themeMode by vm.themeMode.collectAsState()
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ThemeMode.entries.forEach { m ->
+                    FilterChip(
+                        selected = themeMode == m, onClick = { vm.setThemeMode(m) }, label = { Text(m.label) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            Text(
+                "Automático segue o tema do sistema.",
+                Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
             SectionHeader("Organização", Modifier.semantics { heading() })
             SettingsItem(Icons.Outlined.Category, "Categorias", "Criar, editar e excluir categorias", enabled = true) {
                 vm.navigate(Route.Categories)

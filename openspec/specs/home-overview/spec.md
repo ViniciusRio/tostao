@@ -6,7 +6,7 @@ Dar em uma tela a situação financeira atual e acesso rápido ao registro de tr
 ## Requirements
 
 ### Requirement: Painel inicial
-A tela Início SHALL mostrar: saldo total; receitas e despesas do mês atual; pagamentos atrasados e próximos (até 30 dias) com Pagar/Pular; e as 5 transações mais recentes com atalho para a lista completa.
+A tela Início SHALL mostrar: saldo total; receitas e despesas do mês atual; pagamentos atrasados e próximos (até o fim do mês atual ou nos próximos 7 dias) com Pagar/Pular; e as 5 transações mais recentes com atalho para a lista completa.
 
 #### Scenario: Primeiro uso
 - **WHEN** não existe nenhuma conta
@@ -38,7 +38,7 @@ O app SHALL permitir ocultar os valores monetários da tela Início com um toque
 - **THEN** os valores da Início ficam ocultos até tocar de novo, inclusive depois de reabrir o app
 
 ### Requirement: Navegação e acessibilidade
-O app SHALL ter barra inferior com Início, Transações, Planejamento (planejados e orçamentos) e Relatórios, mais um botão de adicionar que oferece Despesa, Receita e Transferência. Todo controle interativo MUST ter descrição para leitor de tela e área de toque mínima de 48 dp, e o tema MUST seguir o modo claro/escuro do sistema.
+O app SHALL ter barra inferior com Início, Transações, Planejamento (planejados e orçamentos) e Relatórios, mais um botão de adicionar (fora de Planejamento e Relatórios) que oferece Despesa, Receita e Transferência. Todo controle interativo MUST ter descrição para leitor de tela e área de toque mínima de 48 dp, e o tema MUST seguir o modo claro/escuro do sistema por padrão, com opção em Configurações para fixar Claro ou Escuro.
 
 #### Scenario: Leitor de tela
 - **WHEN** o TalkBack foca o botão de adicionar
