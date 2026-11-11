@@ -42,7 +42,7 @@ O campo Valor do formulário de transação SHALL aceitar a soma de até 50 parc
 ### Requirement: Lista de transações
 Datas e horas de transações SHALL ser interpretadas no fuso atual do aparelho para agrupar por dia e por mês. O app SHALL listar transações efetivadas do mês selecionado, da mais recente para a mais antiga, agrupadas por dia com cabeçalho relativo ("Hoje", "Ontem" ou data como "17 de set."), mostrando o total do dia. Transações com a mesma data e hora MUST aparecer da lançada por último para a lançada primeiro. O usuário MUST poder navegar entre meses e filtrar por tipo, por conta e por categoria ou grupo de categorias.
 
-Com filtro de categoria, de grupo ou "Sem categoria", a lista SHALL mostrar só receitas e despesas daquele item, sem transferências nem ajustes de saldo (as mesmas regras de Relatórios), e um resumo com o total de despesas e o de receitas do mês, cada um só quando houver. Para grupo, o resumo MUST detalhar cada categoria do grupo com movimento. O filtro combina com tipo e conta, e fica indisponível com o tipo "Transferências".
+Com filtro de categoria, de grupo ou "Sem categoria", a lista SHALL mostrar só receitas e despesas daquele item, sem transferências nem ajustes de saldo (as mesmas regras de Relatórios), e um resumo com o total de despesas e o de receitas do mês, cada um só quando houver. Para grupo, o resumo MUST detalhar cada categoria do grupo com movimento. O filtro combina com tipo e conta. Ao escolher o tipo "Transferências", o filtro volta para "Todas" e fica indisponível.
 
 #### Scenario: Navegar meses
 - **WHEN** o usuário toca na seta de mês anterior
@@ -50,7 +50,7 @@ Com filtro de categoria, de grupo ou "Sem categoria", a lista SHALL mostrar só 
 
 #### Scenario: Filtrar pelo grupo Saúde
 - **WHEN** o mês tem R$ 500,00 em Plano de saúde, R$ 300,00 em Psicólogo e R$ 0,00 em Seguro de vida, e o usuário filtra pelo grupo "Saúde"
-- **THEN** a lista mostra só essas transações e o resumo mostra "Saúde: R$ 800,00", com Plano de saúde R$ 500,00 e Psicólogo R$ 300,00
+- **THEN** a lista mostra só essas transações e o resumo mostra "Saúde · Despesas R$ 800,00", com Plano de saúde R$ 500,00 e Psicólogo R$ 300,00
 
 #### Scenario: Filtrar por uma categoria
 - **WHEN** o usuário filtra pela categoria "Psicólogo"
