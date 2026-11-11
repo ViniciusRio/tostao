@@ -35,6 +35,9 @@ android {
     )
     if (keystorePropsFile.exists()) {
         val props = Properties().apply { keystorePropsFile.inputStream().use { load(it) } }
+        val missing = listOf("storeFile", "storePassword", "keyAlias", "keyPassword").filter { props.getProperty(it).isNullOrBlank() }
+        require(missing.isEmpty()) { "${keystorePropsFile.path}: faltam as chaves ${missing.joinToString()}" }
+        require(file(props.getProperty("storeFile")).exists()) { "${keystorePropsFile.path}: storeFile não encontrado (${props.getProperty("storeFile")})" }
         signingConfigs {
             create("release") {
                 storeFile = file(props.getProperty("storeFile"))

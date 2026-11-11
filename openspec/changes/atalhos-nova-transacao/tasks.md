@@ -13,11 +13,11 @@
 
 - [ ] 3.1 Criar os ícones vetoriais, as strings e `res/xml/shortcuts.xml` e ligá-los à `MainActivity`. Verificar no A26 pressionando o ícone, com os três atalhos abrindo o tipo certo.
 - [ ] 3.2 Criar o `QuickExpenseWidget` (RemoteViews), o layout, o info XML e o receiver no manifesto. Verificar no A26 adicionando o widget à tela inicial: um toque abre a despesa e salvar volta para a tela inicial.
-- [ ] 3.3 Atualizar o README (o que tem e o que fica fora do escopo). Verificar lendo o texto.
+- [x] 3.3 Atualizar o README (o que tem e o que fica fora do escopo). Verificar lendo o texto.
 
 ## 4. Verificação
 
-- [ ] 4.1 Rodar `./gradlew -q :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest` sem falhas, incluindo lint limpo para os atalhos e o widget.
+- [x] 4.1 Rodar `./gradlew -q :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest` sem falhas, incluindo lint limpo para os atalhos e o widget.
 - [ ] 4.2 No A26: instalar, rodar `am instrument` e testar o cenário "App aberto em outra tela" (o app em Relatórios continua em Relatórios com o número atualizado) e o primeiro uso sem conta, com o app realmente vazio (`pm clear` no debug, liberado pelo usuário), restaurando o backup depois.
 - [ ] 4.3 Pedir a revisão de código ao Codex (somente leitura), aplicar os achados válidos e registrá-los no PR.
 

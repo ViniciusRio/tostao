@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
         const val OPEN_ACCOUNT_FORM = "account_form"
 
         // Mesmos scrims padrão do enableEdgeToEdge() para a barra de navegação de 3 botões.
-        private val LIGHT_SCRIM = Color.argb(0xe6, 0xFF, 0xFF, 0xFF)
-        private val DARK_SCRIM = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
+        internal val LIGHT_SCRIM = Color.argb(0xe6, 0xFF, 0xFF, 0xFF)
+        internal val DARK_SCRIM = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
     }
 }

@@ -1,9 +1,11 @@
 package com.viniciusrio.tostao
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,6 +31,7 @@ import com.viniciusrio.tostao.ui.MainViewModel
 import com.viniciusrio.tostao.ui.Route
 import com.viniciusrio.tostao.ui.screens.TransactionFormScreen
 import com.viniciusrio.tostao.ui.theme.FinanceTheme
+import com.viniciusrio.tostao.ui.theme.isDark
 
 /**
  * Formulário de nova transação aberto pelo widget ou pelos atalhos do ícone. Roda numa tarefa
@@ -43,7 +47,17 @@ class QuickAddActivity : ComponentActivity() {
         // Rota só na primeira criação do VM; na rotação ele sobrevive com o formulário.
         if (vm.backStack.lastOrNull() !is Route.TxForm) vm.startQuick(typeOf(intent), newRequest = false)
         setContent {
-            FinanceTheme {
+            val mode by vm.themeMode.collectAsState()
+            val dark = mode.isDark()
+            // Mesmo tema e barras da MainActivity: segue a preferência do app, não só a do sistema.
+            DisposableEffect(dark) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark },
+                    navigationBarStyle = SystemBarStyle.auto(MainActivity.LIGHT_SCRIM, MainActivity.DARK_SCRIM) { dark },
+                )
+                onDispose {}
+            }
+            FinanceTheme(dark) {
                 val data by vm.data.collectAsState()
                 val message by vm.message.collectAsState()
                 val close by vm.quickClose.collectAsState()

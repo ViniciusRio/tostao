@@ -71,6 +71,9 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
     var confirmDelete by remember { mutableStateOf(false) }
     // Um toque só: um segundo toque em Salvar antes de a tela fechar não pode gravar de novo.
     var saving by remember { mutableStateOf(false) }
+    // Id da nova transação fixado na primeira abertura e mantido na rotação: se Salvar for tocado
+    // de novo (ex.: depois de girar a tela durante a gravação), o upsert regrava a mesma transação.
+    val newId = rememberSaveable { existing?.id ?: vm.newId() }
     val failures by vm.saveFailures.collectAsState()
     LaunchedEffect(failures) { saving = false }
     var addingCategory by rememberSaveable { mutableStateOf(false) }
@@ -104,7 +107,7 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
             saving = true
             val millis = date.atTime(time).atZone(vm.zone).toInstant().toEpochMilli()
             val t = Transaction(
-                id = existing?.id ?: vm.newId(), type = type, amountCents = cents!!, accountId = accountId!!,
+                id = newId, type = type, amountCents = cents!!, accountId = accountId!!,
                 toAccountId = if (type == TxType.TRANSFER) toAccountId else null,
                 categoryId = if (type == TxType.TRANSFER) null else effectiveCategory,
                 title = title.trim(), note = note.trim(), dateTimeMillis = millis,

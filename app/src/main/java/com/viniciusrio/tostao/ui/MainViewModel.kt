@@ -215,19 +215,28 @@ class MainViewModel(
         }
     }
 
+    /** Gravação iniciada por um formulário, com o pedido rápido em que nasceu e a confirmação. */
+    private class PendingWrite(val request: Int, val result: Deferred<Boolean>) {
+        @Volatile var message: UiMessage? = null
+    }
+
     /** Gravações iniciadas por formulários, cada uma com o próprio resultado (true = gravou). */
-    private val pendingWrites = mutableListOf<Deferred<Boolean>>()
+    private val pendingWrites = mutableListOf<PendingWrite>()
     private val _saveFailures = MutableStateFlow(0)
 
     /** Conta falhas de gravação; o formulário usa para liberar o botão Salvar de novo. */
     val saveFailures: StateFlow<Int> = _saveFailures.asStateFlow()
 
-    /** Espera as gravações pendentes; true se todas deram certo. */
-    suspend fun awaitWrites(): Boolean {
-        val snapshot = pendingWrites.toList()
-        val ok = snapshot.awaitAll().all { it }
+    /**
+     * Espera as gravações pendentes do pedido [request]. Devolve a confirmação da última transação
+     * gravada se todas deram certo, ou null se alguma falhou. Gravações de um pedido anterior não
+     * seguram nem reprovam o atual.
+     */
+    private suspend fun awaitWrites(request: Int): Result<UiMessage?> {
+        val snapshot = pendingWrites.filter { it.request == request }
+        val ok = snapshot.map { it.result }.awaitAll().all { it }
         pendingWrites.removeAll(snapshot)
-        return ok
+        return if (ok) Result.success(snapshot.lastOrNull { it.message != null }?.message) else Result.failure(IllegalStateException())
     }
 
     // Formulário rápido (QuickAddActivity). Tudo aqui vive no ViewModel para sobreviver à rotação.
@@ -258,15 +267,21 @@ class MainViewModel(
         if (closing?.isActive == true) return
         val request = quickRequest
         closing = viewModelScope.launch {
-            if (awaitWrites() && request == quickRequest) _quickClose.value = QuickClose(request, _message.value)
+            val written = awaitWrites(request)
+            if (written.isSuccess && request == quickRequest) _quickClose.value = QuickClose(request, written.getOrNull())
         }
     }
 
     /** Chamado quando o usuário volta da tela raiz; o formulário rápido usa para fechar. */
     private var onRootBack: (() -> Unit)? = null
 
-    private fun track(d: Deferred<Boolean>): Deferred<Boolean> {
-        pendingWrites += d
+    private fun track(block: suspend (PendingWrite) -> Boolean): Deferred<Boolean> {
+        val request = quickRequest
+        lateinit var w: PendingWrite
+        val d = viewModelScope.async(start = kotlinx.coroutines.CoroutineStart.LAZY) { block(w) }
+        w = PendingWrite(request, d)
+        pendingWrites += w
+        d.start()
         return d
     }
 
@@ -329,9 +344,19 @@ class MainViewModel(
     }
 
     // Categorias
-    fun saveCategory(c: Category, isNew: Boolean) = viewModelScope.launch {
-        repo.saveCategory(if (isNew) c.copy(order = repo.nextCategoryOrder()) else c)
+    // Rastreada como as transações: o formulário rápido só fecha (e o VM só morre) depois que a
+    // categoria criada no diálogo estiver gravada.
+    fun saveCategory(c: Category, isNew: Boolean): Deferred<Boolean> = track {
+        try {
+            repo.saveCategory(if (isNew) c.copy(order = repo.nextCategoryOrder()) else c)
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            _saveFailures.value++
+            say("Não foi possível salvar a categoria")
+            return@track false
+        }
         say(if (isNew) "Categoria criada" else "Categoria salva")
+        true
     }
 
     fun deleteCategory(c: Category) = viewModelScope.launch {
@@ -340,14 +365,14 @@ class MainViewModel(
     }
 
     // Transações
-    fun saveTransaction(t: Transaction, isNew: Boolean): Deferred<Boolean> = track(viewModelScope.async {
+    fun saveTransaction(t: Transaction, isNew: Boolean): Deferred<Boolean> = track { w ->
         try {
             repo.saveTransaction(t)
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             _saveFailures.value++
             say("Não foi possível salvar a transação")
-            return@async false
+            return@track false
         }
         if (!t.isAdjustment) prefs.edit().putString(KEY_LAST_ACCOUNT, t.accountId).apply()
         say(
@@ -358,8 +383,9 @@ class MainViewModel(
                 else -> "Transferência registrada"
             },
         )
+        w.message = _message.value
         true
-    })
+    }
 
     fun deleteTransaction(t: Transaction) = viewModelScope.launch {
         repo.deleteTransaction(t.id)
