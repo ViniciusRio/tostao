@@ -41,7 +41,7 @@ openspec validate <change>
 
 ## Correções recorrentes
 - Não implemente na `main` "só para testar": crie a branch antes.
-- A revisão do Codex é disparada pelo implementador sem esperar o pedido, na spec e no diff, sempre somente leitura.
+- Ao abrir qualquer PR (spec ou código), o implementador dispara a revisão do Codex na hora, sem esperar o pedido, sempre somente leitura, e registra o resultado no PR antes de reportar ao Vinícius. Vale também para PR de documentação e para PR de branch antiga reaberta.
 - Migrações do Room: nunca use `fallbackToDestructiveMigration`. Não reconstrua uma tabela referenciada por FK com `ON DELETE CASCADE` (`DROP TABLE categories` apaga `budget_categories`). Prefira `ADD COLUMN`. Toda migração exige um teste de migração próprio (`MigrationTestHelper` a partir do schema exportado), rodado no aparelho; hoje não existe nenhum, e `connectedDebugAndroidTest` sozinho não cobre migração.
 - Ordem da lista de transações: o empate de horário usa o `rowid`. O snapshot e o backup preservam a ordem de inserção.
 - Um id criado de forma assíncrona (ex.: nova categoria) precisa valer como seleção antes de o Flow do Room emiti-lo.
