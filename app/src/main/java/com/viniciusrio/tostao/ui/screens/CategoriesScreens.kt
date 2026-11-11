@@ -17,12 +17,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,6 +77,44 @@ fun CategoriesScreen(vm: MainViewModel, data: FinanceData) {
             }
         }
     }
+}
+
+/**
+ * Cria uma categoria sem sair do formulário (transação ou planejamento). Cor e ícone ficam no
+ * padrão e podem ser ajustados depois em Configurações > Categorias. [onCreated] recebe o id
+ * já gerado, para o formulário selecioná-la assim que ela chegar do banco.
+ */
+@Composable
+fun NewCategoryDialog(vm: MainViewModel, data: FinanceData, type: CategoryType, onDismiss: () -> Unit, onCreated: (String) -> Unit) {
+    var name by rememberSaveable { mutableStateOf("") }
+    val trimmed = name.trim()
+    val duplicate = data.categories.any { it.type == type && it.name.equals(trimmed, ignoreCase = true) }
+    val valid = trimmed.length in 1..Limits.CATEGORY_NAME && !duplicate
+    val create = {
+        if (valid) {
+            val id = vm.newId()
+            vm.saveCategory(Category(id, trimmed, type, 0xFF2F9E6E, "dots", 0), isNew = true)
+            onCreated(id)
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (type == CategoryType.INCOME) "Nova categoria de receita" else "Nova categoria de despesa") },
+        text = {
+            OutlinedTextField(
+                name, { name = it.take(Limits.CATEGORY_NAME) }, label = { Text("Nome") }, singleLine = true, isError = duplicate,
+                supportingText = if (duplicate) ({ Text("Já existe uma categoria com esse nome") }) else null,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { create() }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { TextButton(onClick = create, enabled = valid) { Text("Criar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
 }
 
 @Composable

@@ -122,8 +122,13 @@ class FinanceRepository(private val db: FinanceDatabase) {
     suspend fun deleteRule(id: String) = dao.deleteRule(id)
 
     /** Pagar: cria a transação e avança a regra numa única transação de banco. */
-    suspend fun payRule(ruleId: String, nowMillis: Long): PlannedAction? = db.withTransaction {
+    /**
+     * [expectedConsumed] é o estado que a tela mostrava: se a regra já avançou (toque duplo),
+     * nada é feito, evitando pagar duas ocorrências sem querer.
+     */
+    suspend fun payRule(ruleId: String, nowMillis: Long, expectedConsumed: Int? = null): PlannedAction? = db.withTransaction {
         val r = dao.rule(ruleId)?.toDomain() ?: return@withTransaction null
+        if (expectedConsumed != null && r.consumedOccurrences != expectedConsumed) return@withTransaction null
         if (Recurrence.nextDue(r) == null) return@withTransaction null
         val t = Transaction(
             id = newId(), type = r.type, amountCents = r.amountCents, accountId = r.accountId, toAccountId = null,
@@ -134,8 +139,9 @@ class FinanceRepository(private val db: FinanceDatabase) {
         PlannedAction(r.id, r.consumedOccurrences + 1, t.id)
     }
 
-    suspend fun skipRule(ruleId: String): PlannedAction? = db.withTransaction {
+    suspend fun skipRule(ruleId: String, expectedConsumed: Int? = null): PlannedAction? = db.withTransaction {
         val r = dao.rule(ruleId)?.toDomain() ?: return@withTransaction null
+        if (expectedConsumed != null && r.consumedOccurrences != expectedConsumed) return@withTransaction null
         if (Recurrence.nextDue(r) == null) return@withTransaction null
         dao.setConsumed(r.id, r.consumedOccurrences + 1)
         PlannedAction(r.id, r.consumedOccurrences + 1, null)

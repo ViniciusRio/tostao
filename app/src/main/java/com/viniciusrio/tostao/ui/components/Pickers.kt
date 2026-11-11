@@ -17,7 +17,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -77,7 +79,9 @@ fun AccountChips(accounts: List<Account>, selected: String?, onSelect: (String) 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CategoryChips(categories: List<Category>, selected: Set<String>, onToggle: (String) -> Unit) {
+fun CategoryChips(
+    categories: List<Category>, selected: Set<String>, onAdd: (() -> Unit)? = null, onToggle: (String) -> Unit,
+) {
     FlowRow(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -88,6 +92,13 @@ fun CategoryChips(categories: List<Category>, selected: Set<String>, onToggle: (
                 onClick = { onToggle(c.id) },
                 label = { Text(c.name) },
                 leadingIcon = { Icon(AppIcons.of(c.icon), null, tint = Color(c.colorArgb), modifier = Modifier.size(18.dp)) },
+            )
+        }
+        if (onAdd != null) {
+            AssistChip(
+                onClick = onAdd,
+                label = { Text("Nova categoria") },
+                leadingIcon = { Icon(Icons.Outlined.Add, null, modifier = Modifier.size(18.dp)) },
             )
         }
     }

@@ -18,6 +18,26 @@ class PlannedTest {
         assertEquals("atrasado há 24 dias", Planned.relativeDue(o.overdue[0].daysFromToday))
     }
 
+    @Test fun monthlyPaidThisMonthHidesUntilNextMonthIsNear() {
+        // Pago em 10/nov: a próxima é 10/dez, fora do mês e a mais de uma semana.
+        val paid = rule(LocalDate.of(2026, 11, 10), RecurrenceUnit.MONTH).copy(consumedOccurrences = 1)
+        assertEquals(emptyList<String>(), Planned.overview(listOf(paid), today).upcoming.map { it.rule.id })
+        // Volta a aparecer quando faltam menos de 7 dias.
+        assertEquals(listOf(paid.id), Planned.overview(listOf(paid), LocalDate.of(2026, 12, 4)).upcoming.map { it.rule.id })
+    }
+
+    @Test fun upcomingIncludesRestOfMonthAndFirstDaysOfNext() {
+        val endOfMonth = rule(LocalDate.of(2026, 11, 30), null)
+        val earlyNext = rule(LocalDate.of(2026, 12, 2), null)
+        val lateNext = rule(LocalDate.of(2026, 12, 20), null)
+        val late = LocalDate.of(2026, 11, 27)
+        assertEquals(listOf(endOfMonth.id), Planned.overview(listOf(endOfMonth, earlyNext, lateNext), today).upcoming.map { it.rule.id })
+        assertEquals(
+            listOf(endOfMonth.id, earlyNext.id),
+            Planned.overview(listOf(endOfMonth, earlyNext, lateNext), late).upcoming.map { it.rule.id },
+        )
+    }
+
     @Test fun forecastCountsEveryPendingOccurrenceIncludingOverdue() {
         val data = FinanceData(
             accounts = listOf(account("a", 100000)),

@@ -168,7 +168,7 @@ fun HomeScreen(vm: MainViewModel, data: FinanceData, onAdd: () -> Unit) {
             items(planned.overdue, key = { "o" + it.rule.id }) { DueCard(vm, data, it, hidden, overdue = true) }
         }
         if (planned.upcoming.isNotEmpty()) {
-            item { SectionHeader("Próximos 30 dias") }
+            item { SectionHeader("Próximos") }
             items(planned.upcoming, key = { "u" + it.rule.id }) { DueCard(vm, data, it, hidden, overdue = false) }
         }
 
