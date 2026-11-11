@@ -58,8 +58,9 @@ fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Rout
     if (removed) return
 
     val name = category?.name ?: "Sem categoria"
-    val txs = remember(data, route, month, minute) {
-        TransactionQueries.byCategory(data, route.categoryId, route.type, month, vm.zone, vm.nowMillis(), route.accountId)
+    val asOf by vm.reportAsOf.collectAsState()
+    val txs = remember(data, route, month, asOf) {
+        TransactionQueries.byCategory(data, route.categoryId, route.type, month, vm.zone, asOf, route.accountId)
     }
     val groups = remember(txs, today) { TransactionQueries.groupByDay(txs, vm.zone, today) }
     val total = txs.sumOf { it.amountCents }

@@ -100,6 +100,13 @@ class MainViewModel(
     private val _minute = MutableStateFlow(clock.millis() / 60_000)
     val minute: StateFlow<Long> = _minute.asStateFlow()
 
+    /**
+     * Instante de corte de Relatórios e de Transações da categoria: renovado a cada minuto e a cada
+     * mudança de dados, e o mesmo valor nas duas telas, para o total da tela bater com a linha.
+     */
+    val reportAsOf: StateFlow<Long> = combine(data, _minute) { _, _ -> clock.millis() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, clock.millis())
+
     // Backup, restauração e exportação
     private val _dataOp = MutableStateFlow<DataOp?>(null)
     val dataOp: StateFlow<DataOp?> = _dataOp.asStateFlow()
@@ -218,6 +225,11 @@ class MainViewModel(
     // Navegação
     fun navigate(r: Route) {
         if (r is Route.Tab) {
+            // Mês e tipo de Relatórios só se preservam na ida e volta de uma rota filha; trocar de aba zera.
+            if (backStack.lastOrNull() != r) {
+                reportMonth.value = null
+                reportKind.value = CategoryType.EXPENSE
+            }
             backStack.clear(); backStack.add(r)
         } else {
             backStack.add(r)

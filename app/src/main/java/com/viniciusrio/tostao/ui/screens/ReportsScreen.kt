@@ -66,8 +66,9 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
     val month = chosenMonth ?: YearMonth.from(today)
     val kind by vm.reportKind.collectAsState()
     val setMonth: (YearMonth) -> Unit = { vm.reportMonth.value = it }
-    val report = remember(data, month, minute) { Reports.month(data, month, vm.zone, vm.nowMillis()) }
-    val trend = remember(data, month, minute) { Charts.trend(data, month, vm.zone, vm.nowMillis()) }
+    val asOf by vm.reportAsOf.collectAsState()
+    val report = remember(data, month, asOf) { Reports.month(data, month, vm.zone, asOf) }
+    val trend = remember(data, month, asOf) { Charts.trend(data, month, vm.zone, asOf) }
     val sem = LocalSemantic.current
     val slices = if (kind == CategoryType.EXPENSE) report.expenseByCategory else report.incomeByCategory
     val pie = remember(slices) { Charts.pie(slices) }
