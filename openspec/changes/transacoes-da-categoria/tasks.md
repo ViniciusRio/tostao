@@ -19,7 +19,7 @@
 - [ ] 3.2 Conferir no aparelho: Mercado, Sem categoria, categoria em Outras, voltar mantendo mês/tipo, rotação, TalkBack com e sem valores ocultos
 - [ ] 3.3 Revisão do Codex (somente leitura) e correções
 
-## 4. Integração com o PR #5 (pré-requisito para implementar o PR #5)
+## 4. Integração com o PR #5
 
-- [ ] 4.1 Alterar a spec de `grupos-categorias-e-soma-no-valor` conforme a decisão 8 do design (linha de grupo, categoria expandida, "Outras", remover "Ver transações do item")
-- [ ] 4.2 Alterar a spec de `relatorio-por-conta`: repassar a conta no `accountId` da rota, com cenário e teste de igualdade entre `byCategory` e `Reports.month` com a mesma conta (feito junto com a implementação do filtro de conta)
+- [ ] 4.1 Antes de arquivar, conferir que as specs do PR #5 continuam coerentes com esta tela (rota, `accountId`, linha abre e fatia destaca). O ajuste das specs já foi feito no próprio #5.
+- [ ] 4.2 Na implementação de `relatorio-por-conta`: teste de igualdade entre `byCategory` e `Reports.month` com a mesma conta.

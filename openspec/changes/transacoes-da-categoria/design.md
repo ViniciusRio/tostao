@@ -56,13 +56,11 @@ Só para `categoryId` não nulo: se a categoria deixar de existir em `data.categ
 Com "ocultar valores", total e valores das linhas aparecem como "R$ •••••", como no resto do app.
 
 ### 8. Integração com o PR #5
-As specs do PR #5 hoje dizem que "Ver transações" abre a aba Transações filtrada e que tocar numa categoria expandida de um grupo seleciona a fatia. Isso conflita com "linha abre a tela". Antes de implementar `grupos-categorias-e-soma-no-valor`, a spec dele MUST ser alterada para:
-- linha de grupo: tocar abre esta tela em modo grupo (todas as categorias do grupo, total igual à linha do grupo); expandir/recolher passa a ser um botão próprio na linha;
-- categoria expandida: tocar abre esta tela para a categoria;
-- categoria dentro de "Outras": igual à visão por categoria;
-- remover o requisito "Ver transações do item" e o filtro por grupo em Transações, se só existia para ele.
+O PR #5 já foi alinhado a esta tela (commits `a20c014` e seguintes em `docs/propostas-relatorio-conta-e-grupos`):
+- `grupos-categorias-e-soma-no-valor`: tocar na linha de um grupo abre esta tela em modo grupo (rota com `scope` no lugar de `categoryId`); tocar numa categoria expandida abre a da categoria; expandir é um botão próprio; "Ver transações" saiu. O filtro por categoria/grupo da aba Transações continua, como função independente.
+- `relatorio-por-conta`: passa a conta filtrada no `accountId` da rota e mantém o filtro na volta.
 
-E `relatorio-por-conta` MUST passar a conta filtrada no `accountId` da rota, com teste de igualdade de total com conta selecionada. A ordem fica: este change, depois o PR #5 ajustado.
+Por isso a rota já nasce com `accountId` e a consulta com o filtro opcional de conta. A parte de Relatórios do #5 depende deste change mesclado e arquivado (tarefa 0.1 de lá).
 
 ## Riscos
 
