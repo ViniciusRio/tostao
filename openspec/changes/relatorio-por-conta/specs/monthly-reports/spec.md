@@ -40,3 +40,11 @@ A tela Relatórios SHALL oferecer um filtro de conta com "Todas as contas" (padr
 #### Scenario: Conta sem movimento no mês
 - **WHEN** a conta escolhida não tem receitas nem despesas no mês
 - **THEN** os totais aparecem zerados e a seção por categoria mostra o estado vazio
+
+#### Scenario: Transações da categoria com conta
+- **WHEN** o relatório está filtrado por "Pix" e o usuário toca na linha Mercado
+- **THEN** a tela de transações de Mercado mostra só as despesas de Mercado no Pix, com o total igual ao da linha
+
+#### Scenario: Voltar mantém a conta
+- **WHEN** o relatório está filtrado por "Pix", o usuário abre uma categoria e volta
+- **THEN** Relatórios continua filtrado por "Pix"

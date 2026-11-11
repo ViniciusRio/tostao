@@ -6,9 +6,9 @@
 
 ## 2. Tela
 
-- [ ] 2.1 `ReportsScreen`: `LazyRow` de chips "Todas as contas" e uma por conta (como em Transações), estado `rememberSaveable` mantido ao trocar mês/tipo e ao tocar numa barra, volta para todas se a conta sumir, e a seleção da pizza limpa ao trocar de conta. Verificar no app com duas contas: filtrar Pix, trocar para BTG, voltar para todas, navegar meses e conferir totais e pizza; e com "ocultar valores" ligado.
+- [ ] 2.1 `ReportsScreen`: `LazyRow` de chips "Todas as contas" e uma por conta (como em Transações), conta guardada no `MainViewModel` junto com mês e tipo (como em `transacoes-da-categoria`), mantida ao trocar mês/tipo, ao tocar numa barra e na volta da tela de transações da categoria, volta para todas se a conta sumir, e a seleção da pizza limpa ao trocar de conta. Verificar no app com duas contas: filtrar Pix, trocar para BTG, voltar para todas, navegar meses e conferir totais e pizza; e com "ocultar valores" ligado.
 - [ ] 2.2 Atualizar o README (Relatórios por conta) e rodar `./gradlew :app:testDebugUnitTest :app:assembleDebug`, tudo verde.
 
 ## Workflow follow-up
 
-- A ação "Ver transações" (change `grupos-categorias-e-soma-no-valor`) leva a conta escolhida aqui; isso está no requisito daquele change, e quem for implementado por último faz a ligação.
+- A tela de transações da categoria/grupo (`transacoes-da-categoria` e `grupos-categorias-e-soma-no-valor`) recebe a conta escolhida aqui no `accountId` da rota. Quem for implementado por último faz a ligação, com teste de igualdade entre o total da tela e a linha do relatório filtrado pela mesma conta.

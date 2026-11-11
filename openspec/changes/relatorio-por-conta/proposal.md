@@ -23,4 +23,4 @@ O Vinícius usa mais de uma conta (ex.: BTG e Pix) e quer entender os gastos de 
 - Domínio: `Reports.month` e `Charts.trend` ganham um parâmetro opcional de conta. Sem a conta, o resultado é o mesmo de hoje, então a Início e os testes atuais não mudam.
 - UI: só `ReportsScreen` (linha de chips de conta, como em Transações).
 - Sem mudança de banco, de backup nem de dependências.
-- Convive com o change `grupos-categorias-e-soma-no-valor`. Se este for implementado antes, o "Ver transações" de lá também deve levar a conta escolhida, o que está anotado nas tarefas.
+- Convive com `transacoes-da-categoria` e `grupos-categorias-e-soma-no-valor`: a tela de transações aberta a partir de Relatórios recebe a conta escolhida, e quem for implementado por último faz a ligação.
