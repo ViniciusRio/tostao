@@ -306,6 +306,11 @@ class MainViewModel(
     /** Categorias **novas** criadas por um formulário, por id (ids novos nunca se repetem). */
     private val pendingCategories = mutableMapOf<String, Deferred<Boolean>>()
 
+    /** Troca a rota do topo sem empilhar (ex.: o mês escolhido em Transações da categoria). */
+    fun replaceTop(r: Route) {
+        if (backStack.isNotEmpty()) backStack[backStack.lastIndex] = r
+    }
+
     fun back(): Boolean {
         if (backStack.size <= 1) {
             onRootBack?.invoke()

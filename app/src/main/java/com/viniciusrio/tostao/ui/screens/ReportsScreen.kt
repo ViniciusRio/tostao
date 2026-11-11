@@ -132,6 +132,8 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
             val name = s.category?.name ?: "Sem categoria"
             val isSel = sliceSel?.let { pie.getOrNull(it) }?.categories?.any { it?.id == s.category?.id } == true
             val open = {
+                // Fixa o mês exibido: se o dia virar com a tela aberta, a volta mantém este mês.
+                vm.reportMonth.value = month
                 vm.navigate(Route.CategoryTransactions(s.category?.id, kind, month.toString()))
             }
             Row(

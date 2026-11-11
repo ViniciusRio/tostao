@@ -17,10 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -48,9 +45,9 @@ fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Rout
     val hidden by vm.hideValues.collectAsState()
     val minute by vm.minute.collectAsState()
     val today = remember(minute) { vm.today() }
-    // O mês desta tela é local: trocá-lo aqui não altera Relatórios.
-    var monthText by rememberSaveable { mutableStateOf(route.month) }
-    val month = YearMonth.parse(monthText)
+    // O mês desta tela vive na própria rota (no topo da pilha): sobrevive à ida e volta da edição
+    // e à rotação, e trocá-lo aqui não altera Relatórios.
+    val month = YearMonth.parse(route.month)
     val category = route.categoryId?.let { data.categoryById[it] }
     val removed = route.categoryId != null && category == null
 
@@ -93,7 +90,7 @@ fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Rout
                     MoneyText(total, hidden = hidden, style = MaterialTheme.typography.titleLarge)
                 }
             }
-            item { MonthSwitcher(month, Periods.monthLabel(month, today)) { monthText = it.toString() } }
+            item { MonthSwitcher(month, Periods.monthLabel(month, today)) { vm.replaceTop(route.copy(month = it.toString())) } }
             if (groups.isEmpty()) {
                 item { EmptyState("Nada neste mês", "Nenhuma $noun em $name neste mês.") }
             }

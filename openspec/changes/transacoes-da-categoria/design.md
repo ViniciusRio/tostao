@@ -45,7 +45,9 @@ Mês e tipo de Relatórios saem do `rememberSaveable` local e vão para o `MainV
 - ida e volta e rotação: mês e tipo preservados (o ViewModel sobrevive);
 - morte do processo: o app reabre em Início, como hoje para qualquer tela, e Relatórios volta ao mês atual. Restaurar pilha e estado após morte do processo fica fora do escopo.
 
-A seleção da fatia pode ser perdida na volta. O mês escolhido dentro da tela nova é local a ela (`rememberSaveable`).
+A seleção da fatia pode ser perdida na volta. Ao abrir uma categoria, o mês exibido em Relatórios é fixado em `reportMonth`, para que a virada do dia com a tela aberta não mude o mês na volta.
+
+O mês escolhido dentro da tela nova vive na própria rota (`month`, trocada no topo da pilha por `replaceTop`), não em `rememberSaveable`: sem `SaveableStateHolder`, o estado salvo se perde quando a tela sai da composição para a edição de uma transação. Assim o mês sobrevive à ida e volta da edição e à rotação, sem afetar Relatórios.
 
 Descartado: `SaveableStateHolder` em `FinanceRoot` para todas as rotas. Resolveria em geral, mas muda o comportamento das outras abas (hoje voltam ao mês atual) e é maior que o necessário.
 
