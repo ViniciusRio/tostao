@@ -9,7 +9,7 @@ As regras abaixo valem por si (o documento de origem fica fora do repositório):
 - Marque o progresso no `tasks.md` do change.
 - **Pronto** = lint, testes e build verdes, rodados pelo implementador.
 - O handoff vai na descrição do PR: Objetivo, Branch e commit, Arquivos alterados, Decisões, Checagens rodadas, Dúvidas em aberto, Próxima ação.
-- O Codex revisa o diff do PR em modo somente leitura e classifica cada achado como Bloqueante (volta para correção) ou Sugestão (não bloqueia), registrado em comentário no PR. A 2ª rodada confere cada achado original contra o diff corrigido. São no máximo 2 rodadas; depois disso, o Vinícius decide.
+- O Codex revisa o diff do PR em modo somente leitura e classifica cada achado como Bloqueante (volta para correção) ou Sugestão (não bloqueia), registrado em comentário no PR. Cada rodada seguinte confere todos os achados anteriores contra o diff corrigido. São até 3 rodadas, e só se abre uma nova enquanto houver bloqueante ou parcial; depois da 3ª, o Vinícius decide.
 - Só o Vinícius faz merge. A `main` é protegida e exige PR.
 - Commits seguem Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`), com o trailer `Co-Authored-By`.
 - Atualize o `STATUS.md` ao parar.

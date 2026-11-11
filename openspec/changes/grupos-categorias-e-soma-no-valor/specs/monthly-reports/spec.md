@@ -17,12 +17,16 @@ Quando existir ao menos um grupo do tipo selecionado, Relatórios SHALL oferecer
 - **WHEN** não existe grupo de despesa
 - **THEN** a escolha "Por categoria"/"Por grupo" não aparece e o relatório é o atual
 
+#### Scenario: Receita em categoria de despesa agrupada
+- **WHEN** há uma receita de R$ 50,00 na categoria Psicólogo (despesa, grupo Saúde) e o usuário vê Receitas "Por grupo"
+- **THEN** ela aparece como item próprio "Psicólogo", fora de qualquer grupo
+
 #### Scenario: Grupo sem movimento
 - **WHEN** o grupo "Contas básicas" não teve despesas no mês
 - **THEN** ele não aparece na pizza nem na lista daquele mês
 
 ### Requirement: Detalhamento do grupo
-Na visão "Por grupo", a linha de um grupo SHALL poder ser expandida para mostrar cada categoria do grupo com movimento no mês, com valor e percentual dentro do grupo, em ordem decrescente de valor. Expandir ou recolher MUST NOT mudar a seleção. Tocar numa categoria expandida MUST destacar a fatia do grupo e mostrar no centro o nome, o valor e o percentual dessa categoria sobre o total do tipo.
+Na visão "Por grupo", a linha de um grupo SHALL ter um botão próprio de expandir/recolher que mostra cada categoria do grupo com movimento no mês, com valor e percentual dentro do grupo, em ordem decrescente de valor. Expandir ou recolher MUST NOT mudar a seleção da pizza nem abrir outra tela. Tocar numa categoria expandida MUST abrir "Transações da categoria" para aquela categoria.
 
 #### Scenario: Expandir Saúde
 - **WHEN** o usuário expande o grupo Saúde do exemplo anterior
@@ -30,15 +34,27 @@ Na visão "Por grupo", a linha de um grupo SHALL poder ser expandida para mostra
 
 #### Scenario: Tocar numa categoria do grupo
 - **WHEN** o usuário toca em Psicólogo dentro de Saúde expandido
-- **THEN** a fatia Saúde fica destacada e o centro mostra "Psicólogo", "R$ 300,00" e "30%"
+- **THEN** abre "Transações da categoria" de Psicólogo com R$ 300,00, e a seleção da pizza não muda
 
-### Requirement: Ver transações do item
-Com um item selecionado (categoria, grupo ou "Sem categoria"), Relatórios SHALL oferecer a ação "Ver transações", que abre Transações no mesmo mês, filtrada por aquele item, pelo tipo selecionado e, se o relatório estiver filtrado por uma conta, por essa conta. A ação MUST NOT aparecer para a fatia "Outras".
+### Requirement: Transações do grupo
+Na visão "Por grupo", tocar na linha de um grupo SHALL abrir a tela "Transações da categoria" (change `transacoes-da-categoria`) em modo grupo: as transações de todas as categorias do grupo no mês e no tipo do relatório, com o nome, o ícone e o total do grupo no topo e o detalhamento por categoria com movimento. O total MUST ser igual ao da linha do grupo. Linhas de categoria sem grupo e de "Sem categoria" MUST se comportar como na visão por categoria.
 
 #### Scenario: Abrir transações de Saúde
-- **WHEN** o usuário seleciona o grupo Saúde em novembro e toca em "Ver transações"
-- **THEN** Transações abre em novembro, filtrada por Despesas e pelo grupo Saúde, com o resumo do grupo
+- **WHEN** o usuário está em "Por grupo" em novembro e toca na linha do grupo Saúde
+- **THEN** abre "Saúde" com R$ 800,00, Plano de saúde R$ 500,00 e Psicólogo R$ 300,00 no detalhamento e as transações das duas categorias agrupadas por dia
 
-#### Scenario: Ver transações com conta
-- **WHEN** o relatório está filtrado pela conta Pix e o usuário seleciona Saúde e toca em "Ver transações"
-- **THEN** Transações abre filtrada por Despesas, Saúde e pela conta Pix
+#### Scenario: Grupo com conta
+- **WHEN** o relatório está filtrado pela conta Pix e o usuário toca na linha do grupo Saúde
+- **THEN** a tela mostra só as despesas de Saúde no Pix, com o total igual ao da linha
+
+#### Scenario: Grupo excluído com a tela aberta
+- **WHEN** a tela de transações do grupo Saúde está aberta e o grupo é excluído
+- **THEN** o app volta para Relatórios, sem mostrar as transações de todas as categorias
+
+#### Scenario: Outras na visão por grupo
+- **WHEN** na visão "Por grupo" os itens Educação (sem grupo, 1%) e Pets (grupo, 2%) formam a fatia "Outras" e o usuário toca nela
+- **THEN** o centro mostra "Outras" e a soma, e as linhas de Educação e Pets ficam destacadas; tocar depois na linha Pets abre só as transações do grupo Pets
+
+#### Scenario: Fatia do grupo
+- **WHEN** o usuário toca na fatia Saúde
+- **THEN** a fatia fica destacada e o centro mostra "Saúde", o valor e o percentual, sem abrir outra tela

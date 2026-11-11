@@ -9,8 +9,8 @@ Usando a versão release, o Vinícius sentiu falta de duas coisas. Primeiro, qua
 - **Soma no campo Valor do formulário de transação**: aceitar parcelas separadas por "+" (ex.: `12,50+8,30+15`), mostrar o total enquanto digita e salvar uma única transação com o total. Um botão "+" ao lado do campo insere o sinal, porque o teclado numérico do sistema nem sempre tem essa tecla.
 - **Grupos de categorias (opcional)**: o usuário cria grupos ("guarda-chuvas") de despesa ou de receita, com nome, cor e ícone, e coloca neles as categorias do mesmo tipo. Cada categoria fica em no máximo um grupo. Quem não usar grupos não vê diferença.
 - **Categorias em Configurações** passam a mostrar as categorias organizadas por grupo, com criação e edição de grupos e escolha do grupo no formulário da categoria.
-- **Relatórios**: nova opção "Por grupo" ao lado de "Por categoria". Por grupo, a pizza e a lista mostram cada grupo como um item (categorias sem grupo continuam aparecendo sozinhas). Ao expandir um grupo, a lista mostra o detalhamento por categoria. "Por categoria" continua como hoje.
-- **Transações**: novo filtro por categoria ou por grupo, que mostra o total filtrado do mês e, para grupo, o detalhamento por categoria. A partir de Relatórios, um item selecionado pode abrir Transações já filtradas por ele.
+- **Relatórios**: nova opção "Por grupo" ao lado de "Por categoria". Por grupo, a pizza e a lista mostram cada grupo como um item (categorias sem grupo continuam aparecendo sozinhas). Um botão na linha expande o grupo e mostra o detalhamento por categoria. Tocar na linha de um grupo abre a tela de transações de `transacoes-da-categoria` em modo grupo; tocar numa categoria expandida abre a da categoria. "Por categoria" continua como hoje.
+- **Transações**: novo filtro por categoria ou por grupo, que mostra o total filtrado do mês e, para grupo, o detalhamento por categoria. O filtro é da aba Transações; a partir de Relatórios, o caminho é a tela de transações da categoria/grupo.
 - **Busca** passa a encontrar transações também pelo nome do grupo da categoria.
 - **Backup** passa a incluir os grupos (formato 2). Arquivos no formato 1 continuam sendo aceitos.
 
@@ -21,7 +21,7 @@ Usando a versão release, o Vinícius sentiu falta de duas coisas. Primeiro, qua
 
 ### Modified Capabilities
 - `transactions`: soma de parcelas no campo Valor, filtro por categoria ou grupo na lista com total filtrado, e busca pelo nome do grupo.
-- `monthly-reports`: visão por grupo (pizza e lista com detalhamento) e atalho para Transações filtradas.
+- `monthly-reports` (depois de sincronizado o delta de `transacoes-da-categoria`): visão por grupo (pizza e lista com detalhamento) e transações do grupo na tela de `transacoes-da-categoria`.
 - `data-backup`: o backup inclui os grupos e a restauração aceita os formatos 1 e 2. Este capability vem do change `backup-exportacao`, que ainda não foi arquivado.
 
 ## Impact
