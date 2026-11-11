@@ -69,9 +69,9 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
     var time by remember { mutableStateOf(start.toLocalTime()) }
     var confirmDelete by remember { mutableStateOf(false) }
     var addingCategory by rememberSaveable { mutableStateOf(false) }
-    // Categoria criada pelo diálogo: vale como seleção mesmo antes de o banco devolvê-la na lista.
-    var createdCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
-    var createdCategoryType by rememberSaveable { mutableStateOf<CategoryType?>(null) }
+    // Categorias criadas pelo diálogo ("TIPO:id"): valem como seleção mesmo antes de o banco
+    // devolvê-las na lista, inclusive se o usuário criar várias alternando entre despesa e receita.
+    var createdCategories by rememberSaveable { mutableStateOf(listOf<String>()) }
     val focus = remember { FocusRequester() }
 
     if (editId != null && existing == null) {
@@ -86,7 +86,7 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
             .sortedWith(compareBy({ recent.indexOf(it.id).let { i -> if (i < 0) Int.MAX_VALUE else i } }, { it.order }))
     }
     val effectiveCategory = categoryId?.takeIf { id ->
-        cats.any { it.id == id } || (id == createdCategoryId && createdCategoryType == catType)
+        cats.any { it.id == id } || "${catType.name}:$id" in createdCategories
     }
 
     val cents = Money.parse(amount)
@@ -176,8 +176,7 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
 
     if (addingCategory) {
         NewCategoryDialog(vm, data, catType, onDismiss = { addingCategory = false }) { id ->
-            createdCategoryId = id
-            createdCategoryType = catType
+            createdCategories = createdCategories + "${catType.name}:$id"
             categoryId = id
             addingCategory = false
         }
