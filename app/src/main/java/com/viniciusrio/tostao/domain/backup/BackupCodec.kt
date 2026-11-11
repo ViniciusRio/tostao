@@ -63,7 +63,7 @@ object BackupCodec {
 
     /** Hash da forma canônica dos dados (sem data de criação): igual se e só se os dados forem iguais. */
     fun fingerprint(data: FinanceData): String {
-        val bytes = compact.encodeToString(BackupData.serializer(), toDto(data)).toByteArray(Charsets.UTF_8)
+        val bytes = compact.encodeToString(BackupData.serializer(), toDto(data, keepTransactionOrder = false)).toByteArray(Charsets.UTF_8)
         return MessageDigest.getInstance("SHA-256").digest(bytes).take(16).joinToString("") { "%02x".format(it) }
     }
 
@@ -236,14 +236,16 @@ object BackupCodec {
         }
     }
 
-    private fun toDto(data: FinanceData) = BackupData(
+    private fun toDto(data: FinanceData, keepTransactionOrder: Boolean = true) = BackupData(
         accounts = data.accounts.sortedBy { it.id }.map {
             AccountDto(it.id, it.name, it.colorArgb, it.icon, it.initialBalanceCents, it.includeInTotal, it.order)
         },
         categories = data.categories.sortedBy { it.id }.map {
             CategoryDto(it.id, it.name, it.type.name, it.colorArgb, it.icon, it.order)
         },
-        transactions = data.transactions.sortedBy { it.id }.map {
+        // No arquivo, a ordem de inserção (vinda do banco) é preservada: ela é o desempate de
+        // horários iguais na lista e precisa sobreviver à restauração. A impressão digital ignora ordem.
+        transactions = (if (keepTransactionOrder) data.transactions else data.transactions.sortedBy { it.id }).map {
             TransactionDto(
                 it.id, it.type.name, it.amountCents, it.accountId, it.toAccountId, it.categoryId, it.title, it.note,
                 it.dateTimeMillis, it.plannedRuleId, it.isAdjustment,

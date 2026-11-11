@@ -38,6 +38,20 @@ class PlannedTest {
         )
     }
 
+    @Test fun upcomingWindowEdgesAcrossYearEnd() {
+        val today = LocalDate.of(2026, 12, 28)
+        val d6 = rule(LocalDate.of(2027, 1, 3), null)
+        val d7 = rule(LocalDate.of(2027, 1, 4), null)
+        val ids = Planned.overview(listOf(d6, d7), today).upcoming.map { it.rule.id }
+        assertEquals(listOf(d6.id), ids)
+    }
+
+    @Test fun weeklyPaidStaysVisibleInsideTheMonth() {
+        // Semanal paga em 10/nov: a próxima (17/nov) ainda é deste mês e continua em "Próximos".
+        val weekly = rule(LocalDate.of(2026, 11, 10), RecurrenceUnit.WEEK).copy(consumedOccurrences = 1)
+        assertEquals(listOf(weekly.id), Planned.overview(listOf(weekly), today).upcoming.map { it.rule.id })
+    }
+
     @Test fun forecastCountsEveryPendingOccurrenceIncludingOverdue() {
         val data = FinanceData(
             accounts = listOf(account("a", 100000)),

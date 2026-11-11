@@ -248,10 +248,15 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
     var end by remember { mutableStateOf(existing?.endDate ?: today.plusYears(1)) }
     var confirmDelete by remember { mutableStateOf(false) }
     var addingCategory by rememberSaveable { mutableStateOf(false) }
+    // Categoria criada pelo diálogo: vale como seleção mesmo antes de o banco devolvê-la na lista.
+    var createdCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var createdCategoryType by rememberSaveable { mutableStateOf<CategoryType?>(null) }
 
     val catType = if (type == TxType.INCOME) CategoryType.INCOME else CategoryType.EXPENSE
     val cats = data.categories.filter { it.type == catType }
-    val effectiveCategory = categoryId?.takeIf { c -> cats.any { it.id == c } }
+    val effectiveCategory = categoryId?.takeIf { c ->
+        cats.any { it.id == c } || (c == createdCategoryId && createdCategoryType == catType)
+    }
     val cents = Money.parse(amount)
     val n = interval.toIntOrNull()
     val endOk = !hasEnd || unit == null || !end.isBefore(start)
@@ -324,6 +329,8 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
     }
     if (addingCategory) {
         NewCategoryDialog(vm, data, catType, onDismiss = { addingCategory = false }) { id ->
+            createdCategoryId = id
+            createdCategoryType = catType
             categoryId = id
             addingCategory = false
         }

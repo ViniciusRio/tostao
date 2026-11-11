@@ -57,7 +57,8 @@ interface FinanceDao {
     // Retrato completo (backup) e substituição (restauração).
     @Query("SELECT * FROM accounts ORDER BY sortOrder") suspend fun allAccounts(): List<AccountEntity>
     @Query("SELECT * FROM categories ORDER BY sortOrder, name") suspend fun allCategories(): List<CategoryEntity>
-    @Query("SELECT * FROM transactions") suspend fun allTransactions(): List<TransactionEntity>
+    // Ordem de inserção: o backup a preserva para a restauração manter o desempate por rowid.
+    @Query("SELECT * FROM transactions ORDER BY rowid") suspend fun allTransactions(): List<TransactionEntity>
     @Query("SELECT * FROM planned_rules") suspend fun allRules(): List<PlannedRuleEntity>
     @Query("SELECT * FROM budgets ORDER BY sortOrder") suspend fun allBudgets(): List<BudgetEntity>
     @Query("SELECT * FROM budget_categories") suspend fun allBudgetCategories(): List<BudgetCategoryEntity>
