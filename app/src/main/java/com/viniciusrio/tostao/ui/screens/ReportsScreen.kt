@@ -26,7 +26,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +44,7 @@ import com.viniciusrio.tostao.domain.Money
 import com.viniciusrio.tostao.domain.Periods
 import com.viniciusrio.tostao.domain.Reports
 import com.viniciusrio.tostao.ui.MainViewModel
+import com.viniciusrio.tostao.ui.Route
 import com.viniciusrio.tostao.ui.components.DonutCenter
 import com.viniciusrio.tostao.ui.components.DonutChart
 import com.viniciusrio.tostao.ui.components.EmptyState
@@ -61,31 +61,23 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
     val hidden by vm.hideValues.collectAsState()
     val minute by vm.minute.collectAsState()
     val today = remember(minute) { vm.today() }
-    var monthText by rememberSaveable { mutableStateOf(YearMonth.from(today).toString()) }
-    val month = YearMonth.parse(monthText)
-    var kind by rememberSaveable { mutableStateOf(CategoryType.EXPENSE) }
+    // Mês e tipo vivem no ViewModel para sobreviver à ida e volta de Transações da categoria.
+    val chosenMonth by vm.reportMonth.collectAsState()
+    val month = chosenMonth ?: YearMonth.from(today)
+    val kind by vm.reportKind.collectAsState()
+    val setMonth: (YearMonth) -> Unit = { vm.reportMonth.value = it }
     val report = remember(data, month, minute) { Reports.month(data, month, vm.zone, vm.nowMillis()) }
     val trend = remember(data, month, minute) { Charts.trend(data, month, vm.zone, vm.nowMillis()) }
     val sem = LocalSemantic.current
     val slices = if (kind == CategoryType.EXPENSE) report.expenseByCategory else report.incomeByCategory
     val pie = remember(slices) { Charts.pie(slices) }
-    // Seleção: uma fatia do gráfico ("slice:<i>") ou uma categoria da lista ("cat:<id>").
-    var selectedKey by remember(month, kind) { mutableStateOf<String?>(null) }
+    // Seleção: só a fatia do gráfico. A linha da lista abre Transações da categoria e não seleciona.
+    var sliceSel by remember(month, kind) { mutableStateOf<Int?>(null) }
     val kindLabel = if (kind == CategoryType.EXPENSE) "despesas" else "receitas"
-    fun catKey(id: String?) = "cat:" + (id ?: "none")
-    fun pieIndexOf(categoryId: String?): Int? =
-        pie.indexOfFirst { s -> s.categories.any { it?.id == categoryId } }.takeIf { it >= 0 }
-    val sliceSel = selectedKey?.removePrefix("slice:")?.takeIf { selectedKey!!.startsWith("slice:") }?.toIntOrNull()
-    val catSel = slices.firstOrNull { selectedKey == catKey(it.category?.id) }
-    val highlighted = sliceSel ?: catSel?.let { pieIndexOf(it.category?.id) }
-    val center = when {
-        sliceSel != null -> pie.getOrNull(sliceSel)?.let { DonutCenter(it.label, it.cents, it.percent) }
-        catSel != null -> DonutCenter(catSel.category?.name ?: "Sem categoria", catSel.totalCents, catSel.percent)
-        else -> null
-    }
+    val center = sliceSel?.let { pie.getOrNull(it) }?.let { DonutCenter(it.label, it.cents, it.percent) }
 
     LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
-        item { MonthSwitcher(month, Periods.monthLabel(month, today)) { monthText = it.toString() } }
+        item { MonthSwitcher(month, Periods.monthLabel(month, today), onChange = setMonth) }
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Stat("Receitas", report.incomeCents, sem.income, hidden, Modifier.weight(1f))
@@ -111,11 +103,11 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
         }
         item { SectionHeader("Últimos 6 meses") }
         item {
-            TrendBars(trend, month, hidden, onMonth = { monthText = it.toString() }) { Periods.monthLabel(it, today) }
+            TrendBars(trend, month, hidden, onMonth = setMonth) { Periods.monthLabel(it, today) }
         }
         item { Spacer(Modifier.height(8.dp)) }
         item {
-            SegmentedChoice(listOf(CategoryType.EXPENSE to "Despesas", CategoryType.INCOME to "Receitas"), kind, { kind = it })
+            SegmentedChoice(listOf(CategoryType.EXPENSE to "Despesas", CategoryType.INCOME to "Receitas"), kind, { vm.reportKind.value = it })
         }
         item { SectionHeader("Por categoria") }
         if (pie.isEmpty()) {
@@ -123,13 +115,13 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
         } else {
             item {
                 DonutChart(
-                    pie, highlighted, center,
-                    onTapSlice = { i -> selectedKey = if (i == null || i == highlighted) null else "slice:$i" },
+                    pie, sliceSel, center,
+                    onTapSlice = { i -> sliceSel = if (i == null || i == sliceSel) null else i },
                     totalLabel = if (kind == CategoryType.EXPENSE) "Despesas" else "Receitas",
                     hidden = hidden, description = Charts.describe(kindLabel, pie),
                 )
                 Text(
-                    "Toque numa fatia ou numa categoria para ver o valor.",
+                    "Toque numa fatia para ver o valor ou numa categoria para ver as transações.",
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -138,19 +130,19 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
         itemsIndexed(slices, key = { _, s -> s.category?.id ?: "none" }) { _, s ->
             val color = Color(s.category?.colorArgb ?: 0xFF7D7D85)
             val name = s.category?.name ?: "Sem categoria"
-            val key = catKey(s.category?.id)
-            val isSel = selectedKey == key ||
-                (sliceSel != null && pie.getOrNull(sliceSel)?.categories?.any { it?.id == s.category?.id } == true)
-            val select = { selectedKey = if (selectedKey == key) null else key }
+            val isSel = sliceSel?.let { pie.getOrNull(it) }?.categories?.any { it?.id == s.category?.id } == true
+            val open = {
+                vm.navigate(Route.CategoryTransactions(s.category?.id, kind, month.toString()))
+            }
             Row(
                 Modifier.fillMaxWidth()
                     .background(if (isSel) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-                    .clickable(role = Role.Button, onClick = select)
+                    .clickable(role = Role.Button, onClick = open)
                     .heightIn(min = 56.dp).padding(horizontal = 20.dp, vertical = 8.dp)
                     .clearAndSetSemantics {
                         contentDescription = "$name, ${if (hidden) "valor oculto" else Money.format(s.totalCents)}, ${s.percent}%"
                         this.selected = isSel
-                        onClick("Destacar no gráfico") { select(); true }
+                        onClick("Ver transações") { open(); true }
                     },
                 verticalAlignment = Alignment.CenterVertically,
             ) {

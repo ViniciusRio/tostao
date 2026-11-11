@@ -28,6 +28,36 @@ object TransactionQueries {
             .toList()
     }
 
+    /**
+     * Transações de uma categoria no mês com o recorte e o agrupamento exatos de [Reports.month]:
+     * efetivadas (até [nowMillis]), do [type] pedido (transferências nunca entram), sem ajustes.
+     * [categoryId] null = "Sem categoria", que inclui as órfãs (categoria inexistente);
+     * um id que não existe mais devolve lista vazia (não há linha dele no relatório).
+     * Não confere `Category.type`, como o relatório. [accountId] null = todas as contas.
+     * A soma MUST bater com o `totalCents` da linha correspondente do relatório. Mais recentes primeiro.
+     */
+    fun byCategory(
+        data: FinanceData,
+        categoryId: String?,
+        type: CategoryType,
+        month: YearMonth,
+        zone: ZoneId,
+        nowMillis: Long,
+        accountId: String? = null,
+    ): List<Transaction> {
+        val range = Periods.monthRange(month, zone)
+        val txType = if (type == CategoryType.EXPENSE) TxType.EXPENSE else TxType.INCOME
+        // Uma categoria que não existe mais não tem linha no relatório: lista vazia, não "Sem categoria".
+        if (categoryId != null && categoryId !in data.categoryById) return emptyList()
+        val key = categoryId
+        return data.transactions.asSequence()
+            .filter { it.type == txType && !it.isAdjustment && it.dateTimeMillis in range && it.dateTimeMillis <= nowMillis }
+            .filter { accountId == null || it.accountId == accountId }
+            .filter { t -> t.categoryId?.let(data.categoryById::get)?.id == key }
+            .sortedByDescending { it.dateTimeMillis }
+            .toList()
+    }
+
     /** Agrupa por dia; o total do dia ignora transferências (não mudam o patrimônio). */
     fun groupByDay(txs: List<Transaction>, zone: ZoneId, today: LocalDate): List<DayGroup> =
         txs.groupBy { Periods.localDate(it.dateTimeMillis, zone) }

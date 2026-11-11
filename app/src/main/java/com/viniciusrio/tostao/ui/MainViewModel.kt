@@ -20,6 +20,7 @@ import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Balances
 import com.viniciusrio.tostao.domain.Budget
 import com.viniciusrio.tostao.domain.Category
+import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.PlannedRule
 import com.viniciusrio.tostao.ui.theme.ThemeMode
@@ -46,6 +47,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 
 /** Mensagem única na tela; uma nova substitui a anterior (e o desfazer dela). */
@@ -72,6 +74,12 @@ class MainViewModel(
 
     /** Aba de Planejamento (0 = planejados, 1 = orçamentos), mantida ao voltar de um formulário. */
     var planningTab by androidx.compose.runtime.mutableIntStateOf(0)
+
+    /** Mês de Relatórios (null = mês atual), mantido ao voltar de Transações da categoria. */
+    val reportMonth = MutableStateFlow<YearMonth?>(null)
+
+    /** Tipo de Relatórios (despesas ou receitas), mantido como [reportMonth]. */
+    val reportKind = MutableStateFlow(CategoryType.EXPENSE)
 
     private val _hideValues = MutableStateFlow(prefs.getBoolean(KEY_HIDE, false))
     val hideValues: StateFlow<Boolean> = _hideValues.asStateFlow()
