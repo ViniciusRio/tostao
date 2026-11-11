@@ -11,7 +11,9 @@ import kotlinx.coroutines.flow.Flow
 interface FinanceDao {
     @Query("SELECT * FROM accounts ORDER BY sortOrder") fun accounts(): Flow<List<AccountEntity>>
     @Query("SELECT * FROM categories ORDER BY sortOrder, name") fun categories(): Flow<List<CategoryEntity>>
-    @Query("SELECT * FROM transactions") fun transactions(): Flow<List<TransactionEntity>>
+    // Mais recentemente inseridas primeiro: as telas ordenam por data com sort estável, então
+    // num empate de horário a última lançada fica no topo. O upsert de edição preserva o rowid.
+    @Query("SELECT * FROM transactions ORDER BY rowid DESC") fun transactions(): Flow<List<TransactionEntity>>
     @Query("SELECT * FROM planned_rules") fun rules(): Flow<List<PlannedRuleEntity>>
     @Query("SELECT * FROM budgets ORDER BY sortOrder") fun budgets(): Flow<List<BudgetEntity>>
     @Query("SELECT * FROM budget_categories") fun budgetCategories(): Flow<List<BudgetCategoryEntity>>
@@ -55,7 +57,8 @@ interface FinanceDao {
     // Retrato completo (backup) e substituição (restauração).
     @Query("SELECT * FROM accounts ORDER BY sortOrder") suspend fun allAccounts(): List<AccountEntity>
     @Query("SELECT * FROM categories ORDER BY sortOrder, name") suspend fun allCategories(): List<CategoryEntity>
-    @Query("SELECT * FROM transactions") suspend fun allTransactions(): List<TransactionEntity>
+    // Ordem de inserção: o backup a preserva para a restauração manter o desempate por rowid.
+    @Query("SELECT * FROM transactions ORDER BY rowid") suspend fun allTransactions(): List<TransactionEntity>
     @Query("SELECT * FROM planned_rules") suspend fun allRules(): List<PlannedRuleEntity>
     @Query("SELECT * FROM budgets ORDER BY sortOrder") suspend fun allBudgets(): List<BudgetEntity>
     @Query("SELECT * FROM budget_categories") suspend fun allBudgetCategories(): List<BudgetCategoryEntity>

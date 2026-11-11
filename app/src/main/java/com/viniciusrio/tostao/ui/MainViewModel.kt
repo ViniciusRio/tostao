@@ -22,6 +22,7 @@ import com.viniciusrio.tostao.domain.Budget
 import com.viniciusrio.tostao.domain.Category
 import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.PlannedRule
+import com.viniciusrio.tostao.ui.theme.ThemeMode
 import com.viniciusrio.tostao.domain.Transaction
 import com.viniciusrio.tostao.domain.TxType
 import kotlinx.coroutines.Dispatchers
@@ -73,6 +74,14 @@ class MainViewModel(
 
     private val _hideValues = MutableStateFlow(prefs.getBoolean(KEY_HIDE, false))
     val hideValues: StateFlow<Boolean> = _hideValues.asStateFlow()
+
+    private val _themeMode = MutableStateFlow(ThemeMode.fromKey(prefs.getString(KEY_THEME, null)))
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    fun setThemeMode(m: ThemeMode) {
+        _themeMode.value = m
+        prefs.edit().putString(KEY_THEME, m.key).apply()
+    }
 
     private val _message = MutableStateFlow<UiMessage?>(null)
     val message: StateFlow<UiMessage?> = _message.asStateFlow()
@@ -369,12 +378,13 @@ class MainViewModel(
     }
 
     fun payRule(r: PlannedRule) = viewModelScope.launch {
-        val a = repo.payRule(r.id, nowMillis()) ?: run { say("Este planejamento não tem ocorrência pendente"); return@launch }
+        // Toque repetido sobre um cartão já pago é ignorado em silêncio pelo repositório.
+        val a = repo.payRule(r.id, nowMillis(), r.consumedOccurrences) ?: return@launch
         say("\"${r.title}\" pago") { undoPlanned(a) }
     }
 
     fun skipRule(r: PlannedRule) = viewModelScope.launch {
-        val a = repo.skipRule(r.id) ?: run { say("Este planejamento não tem ocorrência pendente"); return@launch }
+        val a = repo.skipRule(r.id, r.consumedOccurrences) ?: return@launch
         say("\"${r.title}\" pulado") { undoPlanned(a) }
     }
 
@@ -395,6 +405,7 @@ class MainViewModel(
 
     companion object {
         private const val KEY_HIDE = "hide_values"
+        private const val KEY_THEME = "theme_mode"
         private const val KEY_LAST_ACCOUNT = DataTransferService.KEY_LAST_ACCOUNT
         private const val KEY_SEEDED = DataTransferService.KEY_SEEDED
 

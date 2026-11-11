@@ -76,8 +76,14 @@ class BackupCodecTest {
         val json = BackupCodec.encode(d, created)
         assertTrue(json.contains("\"app\": \"tostao\""))
         assertTrue(json.contains("\"formatVersion\": 1"))
-        val shuffled = d.let { it.copy(transactions = it.transactions.reversed(), accounts = it.accounts.reversed()) }
+        val shuffled = d.let { it.copy(accounts = it.accounts.reversed()) }
         assertEquals(json, BackupCodec.encode(shuffled, created))
+    }
+
+    @Test fun keepsTransactionInsertionOrder() {
+        // A ordem de inserção desempata horários iguais na lista; a restauração precisa mantê-la.
+        val d = sample().let { it.copy(transactions = it.transactions.reversed()) }
+        assertEquals(d.transactions.map { it.id }, valid(BackupCodec.encode(d, created)).data.transactions.map { it.id })
     }
 
     @Test fun fingerprintIgnoresOrderButNotContent() {

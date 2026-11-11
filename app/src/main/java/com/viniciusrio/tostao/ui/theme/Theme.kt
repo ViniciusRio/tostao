@@ -54,9 +54,24 @@ private val type = Typography().run {
 
 val Tabular = TextStyle(fontFeatureSettings = "tnum")
 
+/** Preferência de tema; [key] é o valor gravado nas preferências. */
+enum class ThemeMode(val key: String, val label: String) {
+    SYSTEM("system", "Automático"), LIGHT("light", "Claro"), DARK("dark", "Escuro");
+
+    companion object {
+        fun fromKey(k: String?) = entries.firstOrNull { it.key == k } ?: SYSTEM
+    }
+}
+
 @Composable
-fun FinanceTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
+fun ThemeMode.isDark(): Boolean = when (this) {
+    ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    ThemeMode.LIGHT -> false
+    ThemeMode.DARK -> true
+}
+
+@Composable
+fun FinanceTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val semantic = if (dark) {
         SemanticColors(Color(0xFF7DD9A8), Color(0xFFFF8A80), Color(0xFFFFC857), Color(0xFF9FB8C9))
     } else {

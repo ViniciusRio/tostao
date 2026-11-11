@@ -124,7 +124,8 @@ fun FinanceRoot(vm: MainViewModel) {
             }
         },
         floatingActionButton = {
-            if (route is Route.Tab && route != Route.Reports) {
+            // Planejamento tem o próprio "Novo planejamento"; o + de transação ali só confundia.
+            if (route is Route.Tab && route != Route.Reports && route != Route.Planning) {
                 FloatingActionButton(
                     onClick = openAdd,
                     modifier = Modifier.semantics { contentDescription = "Adicionar transação" },

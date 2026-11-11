@@ -55,7 +55,7 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
     val existing = remember(editId) { editId?.let { id -> data.transactions.firstOrNull { it.id == id } } }
     val start = remember(editId) {
         existing?.let { LocalDateTime.ofInstant(Instant.ofEpochMilli(it.dateTimeMillis), vm.zone) }
-            ?: LocalDateTime.ofInstant(Instant.ofEpochMilli(vm.nowMillis()), vm.zone).withSecond(0).withNano(0)
+            ?: LocalDateTime.ofInstant(Instant.ofEpochMilli(vm.nowMillis()), vm.zone).withNano(0)
     }
     var type by rememberSaveable { mutableStateOf(existing?.type ?: initialType) }
     var amount by rememberSaveable { mutableStateOf(existing?.let { Money.plain(it.amountCents) } ?: "") }
@@ -73,6 +73,10 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
     var saving by remember { mutableStateOf(false) }
     val failures by vm.saveFailures.collectAsState()
     LaunchedEffect(failures) { saving = false }
+    var addingCategory by rememberSaveable { mutableStateOf(false) }
+    // Categorias criadas pelo diálogo ("TIPO:id"): valem como seleção mesmo antes de o banco
+    // devolvê-las na lista, inclusive se o usuário criar várias alternando entre despesa e receita.
+    var createdCategories by rememberSaveable { mutableStateOf(listOf<String>()) }
     val focus = remember { FocusRequester() }
 
     if (editId != null && existing == null) {
@@ -86,7 +90,9 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
         data.categories.filter { it.type == catType }
             .sortedWith(compareBy({ recent.indexOf(it.id).let { i -> if (i < 0) Int.MAX_VALUE else i } }, { it.order }))
     }
-    val effectiveCategory = categoryId?.takeIf { id -> cats.any { it.id == id } }
+    val effectiveCategory = categoryId?.takeIf { id ->
+        cats.any { it.id == id } || "${catType.name}:$id" in createdCategories
+    }
 
     val cents = Money.parse(amount)
     val sameAccount = type == TxType.TRANSFER && toAccountId != null && toAccountId == accountId
@@ -143,7 +149,9 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
                 }
             } else {
                 SectionHeader("Categoria")
-                CategoryChips(cats, setOfNotNull(effectiveCategory)) { id -> categoryId = if (effectiveCategory == id) null else id }
+                CategoryChips(cats, setOfNotNull(effectiveCategory), onAdd = { addingCategory = true }) { id ->
+                    categoryId = if (effectiveCategory == id) null else id
+                }
             }
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
@@ -172,6 +180,13 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
 
     LaunchedEffect(Unit) { if (existing == null) focus.requestFocus() }
 
+    if (addingCategory) {
+        NewCategoryDialog(vm, data, catType, onDismiss = { addingCategory = false }) { id ->
+            createdCategories = createdCategories + "${catType.name}:$id"
+            categoryId = id
+            addingCategory = false
+        }
+    }
     if (confirmDelete && existing != null) {
         ConfirmDialog(
             "Excluir transação?", "Você poderá desfazer logo em seguida.", "Excluir",
