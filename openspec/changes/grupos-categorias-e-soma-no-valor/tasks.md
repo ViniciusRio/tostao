@@ -2,7 +2,7 @@
 
 ## 0. Pré-requisito
 
-- [ ] 0.1 PR #7 (`transacoes-da-categoria`) mesclado e arquivado, com o delta de "Seleção de fatia" já sincronizado em `openspec/specs/monthly-reports/spec.md` (a linha da lista abre a tela e não seleciona). Até lá, a spec principal ainda traz a regra antiga, e este change não deve ser implementado na parte de Relatórios.
+- [x] 0.1 `transacoes-da-categoria` mesclado (PR #11) e arquivado (PR #12), com o delta de "Seleção de fatia" já sincronizado em `openspec/specs/monthly-reports/spec.md` (a linha da lista abre a tela e não seleciona). Concluída com o merge do PR #12.
 
 ## 1. Soma no campo Valor
 
