@@ -21,29 +21,48 @@ data class CategoryTransactions(
     val categoryId: String?,   // null = "Sem categoria"
     val type: CategoryType,
     val month: String,         // YearMonth.toString()
+    val accountId: String? = null, // null = todas as contas
 ) : Route
 ```
+`accountId` existe desde já para não mudar a rota depois: hoje Relatórios sempre passa `null`; quando `relatorio-por-conta` (PR #5) for implementado, passa a conta filtrada.
 Não é `Tab`: a barra inferior some e o botão voltar do sistema volta a Relatórios. A tela tem barra superior com seta de voltar e o nome da categoria.
 
 ### 3. Consulta no domínio, mesmas regras do relatório
 ```kotlin
-fun byCategory(data, categoryId: String?, type: CategoryType, month, zone, nowMillis): List<Transaction>
+fun byCategory(data, categoryId: String?, type: CategoryType, month, zone, nowMillis, accountId: String? = null): List<Transaction>
 ```
-Filtra como `Reports.month`: no mês, efetivadas (`<= nowMillis`), do tipo pedido, `!isAdjustment`, e com a mesma chave de categoria (`categoryId?.let(data.categoryById::get)?.id`), para que órfãs entrem em "Sem categoria". Ordem decrescente de data. O total exibido é a soma dessa lista e MUST bater com a linha do relatório; há teste para isso.
+Reproduz exatamente o recorte e o agrupamento de `Reports.month`: intervalo de `Periods.monthRange(month, zone)`, `dateTimeMillis <= nowMillis` (o instante, não o dia), tipo da transação igual ao pedido (transferências nunca entram), `!isAdjustment`, e a chave `categoryId?.let(data.categoryById::get)?.id`, para que órfãs entrem em "Sem categoria". Como o relatório, **não** confere `Category.type`: uma receita numa categoria de despesa aparece em Receitas, como já acontece na lista do relatório. Com `accountId`, filtra por `accountId` da transação. Ordem decrescente de data.
+
+Contrato de total: para quaisquer dados, mês, tipo e conta, a soma de `byCategory` MUST ser igual ao `totalCents` da linha correspondente de `Reports.month` com os mesmos parâmetros (ou zero, se a linha não existir). A tela recalcula a partir dos dados atuais, então o contrato vale também depois de trocar o mês ou editar uma transação. Testes cobrem isso.
+
+Subtotal por dia: nesta tela os itens são todos do mesmo tipo, então o subtotal do dia é a soma em valor absoluto, sem sinal, como o total do cabeçalho e a linha do relatório. Não reaproveita o `netCents` assinado de `groupByDay`.
 
 ### 4. Troca de mês dentro da tela
 A tela tem `MonthSwitcher` próprio, iniciado no mês da rota. Trocar o mês ali não altera Relatórios. Mês sem transações mostra estado vazio ("Nenhuma despesa em Mercado neste mês.").
 
 ### 5. Relatórios lembra mês e tipo
-Mês e tipo de Relatórios saem do `rememberSaveable` local e vão para o `MainViewModel` (`reportMonth`, `reportKind`, em `SavedStateHandle` se já houver; senão em `MutableStateFlow`). Assim voltar da tela nova devolve o mesmo mês e tipo. A seleção da fatia pode ser perdida na volta.
+Mês e tipo de Relatórios saem do `rememberSaveable` local e vão para o `MainViewModel` como `MutableStateFlow` (`reportMonth`, `reportKind`). O `MainViewModel` não tem `SavedStateHandle` e a pilha de navegação vive só em memória. Resultado:
+- ida e volta e rotação: mês e tipo preservados (o ViewModel sobrevive);
+- morte do processo: o app reabre em Início, como hoje para qualquer tela, e Relatórios volta ao mês atual. Restaurar pilha e estado após morte do processo fica fora do escopo.
+
+A seleção da fatia pode ser perdida na volta. O mês escolhido dentro da tela nova é local a ela (`rememberSaveable`).
 
 Descartado: `SaveableStateHolder` em `FinanceRoot` para todas as rotas. Resolveria em geral, mas muda o comportamento das outras abas (hoje voltam ao mês atual) e é maior que o necessário.
 
 ### 6. Categoria excluída com a tela aberta
-Se a categoria da rota deixar de existir enquanto a tela está aberta (excluída em outro lugar ou por restauração de backup), a tela volta para Relatórios. Não há caminho comum para isso hoje, mas a restauração de backup troca todos os dados.
+Só para `categoryId` não nulo: se a categoria deixar de existir em `data.categoryById` enquanto a tela está aberta, a tela chama `back()` e volta a Relatórios. A rota "Sem categoria" (`null`) nunca é expulsa. A restauração de backup não passa por aqui: quando conclui, ela já limpa a pilha e abre Início (`MainViewModel.restoreFrom`), e isso se mantém.
 
 ### 7. Valores ocultos
 Com "ocultar valores", total e valores das linhas aparecem como "R$ •••••", como no resto do app.
+
+### 8. Integração com o PR #5
+As specs do PR #5 hoje dizem que "Ver transações" abre a aba Transações filtrada e que tocar numa categoria expandida de um grupo seleciona a fatia. Isso conflita com "linha abre a tela". Antes de implementar `grupos-categorias-e-soma-no-valor`, a spec dele MUST ser alterada para:
+- linha de grupo: tocar abre esta tela em modo grupo (todas as categorias do grupo, total igual à linha do grupo); expandir/recolher passa a ser um botão próprio na linha;
+- categoria expandida: tocar abre esta tela para a categoria;
+- categoria dentro de "Outras": igual à visão por categoria;
+- remover o requisito "Ver transações do item" e o filtro por grupo em Transações, se só existia para ele.
+
+E `relatorio-por-conta` MUST passar a conta filtrada no `accountId` da rota, com teste de igualdade de total com conta selecionada. A ordem fica: este change, depois o PR #5 ajustado.
 
 ## Riscos
 
