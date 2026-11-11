@@ -43,6 +43,14 @@ Na visão "Por grupo", tocar na linha de um grupo SHALL abrir a tela "Transaçõ
 - **WHEN** o relatório está filtrado pela conta Pix e o usuário toca na linha do grupo Saúde
 - **THEN** a tela mostra só as despesas de Saúde no Pix, com o total igual ao da linha
 
+#### Scenario: Grupo excluído com a tela aberta
+- **WHEN** a tela de transações do grupo Saúde está aberta e o grupo é excluído
+- **THEN** o app volta para Relatórios, sem mostrar as transações de todas as categorias
+
+#### Scenario: Outras na visão por grupo
+- **WHEN** na visão "Por grupo" os itens Educação (sem grupo, 1%) e Pets (grupo, 2%) formam a fatia "Outras" e o usuário toca nela
+- **THEN** o centro mostra "Outras" e a soma, e as linhas de Educação e Pets ficam destacadas; tocar depois na linha Pets abre só as transações do grupo Pets
+
 #### Scenario: Fatia do grupo
 - **WHEN** o usuário toca na fatia Saúde
 - **THEN** a fatia fica destacada e o centro mostra "Saúde", o valor e o percentual, sem abrir outra tela

@@ -21,7 +21,7 @@ Usando a versão release, o Vinícius sentiu falta de duas coisas. Primeiro, qua
 
 ### Modified Capabilities
 - `transactions`: soma de parcelas no campo Valor, filtro por categoria ou grupo na lista com total filtrado, e busca pelo nome do grupo.
-- `monthly-reports`: visão por grupo (pizza e lista com detalhamento) e transações do grupo na tela de `transacoes-da-categoria`.
+- `monthly-reports` (depois de sincronizado o delta de `transacoes-da-categoria`): visão por grupo (pizza e lista com detalhamento) e transações do grupo na tela de `transacoes-da-categoria`.
 - `data-backup`: o backup inclui os grupos e a restauração aceita os formatos 1 e 2. Este capability vem do change `backup-exportacao`, que ainda não foi arquivado.
 
 ## Impact

@@ -1,5 +1,9 @@
 # Tasks
 
+## 0. Pré-requisito
+
+- [ ] 0.1 PR #7 (`transacoes-da-categoria`) mesclado e arquivado, com o delta de "Seleção de fatia" já sincronizado em `openspec/specs/monthly-reports/spec.md` (a linha da lista abre a tela e não seleciona). Até lá, a spec principal ainda traz a regra antiga, e este change não deve ser implementado na parte de Relatórios.
+
 ## 1. Soma no campo Valor
 
 - [ ] 1.1 `Money.parseSum` e `Money.isSum` conforme o design (decisão 6). Verificar com testes em `MoneyTest`: `12,50+8,30+15` = 3580; `1.234,56+10` = 124456; `45.90+0,10` = 4600; espaços ignorados (`12 + 3`); `+12`, `12+`, `12++3` inválidos; `0+5` = 500 e `0+0` inválido; 50 parcelas válido e 51 inválido; total acima de `MAX_CENTS` inválido; valor simples igual a `Money.parse`.
@@ -30,8 +34,8 @@
 ## 6. Relatórios por grupo
 
 - [ ] 6.1 Domínio: `GroupSlice` e `expenseByGroup`/`incomeByGroup` em `Reports.month`; `Charts.pie` recebendo `ChartItem` com `CategoryScope` e devolvendo `PieSlice.keys`; `Charts.keysOf`. Verificar com testes em `BudgetsAndReportsTest`/`ChartsTest`: cenário Saúde 80% / Lazer 20%, filhos 63% / 37%, grupo sem movimento ausente, "Sem categoria" como item próprio; linhas destacadas pela fatia do grupo e pela fatia "Outras"; e os testes atuais da pizza por categoria com os mesmos resultados esperados.
-- [ ] 6.2 `ReportsScreen`: escolha "Por categoria"/"Por grupo" (só quando existe grupo do tipo, mantida ao trocar mês/tipo e na volta da tela de transações, como mês e tipo em `transacoes-da-categoria`), botão de expandir separado do toque na linha, seleção só por fatia, e toque na linha de grupo, categoria, "Sem categoria" ou filho expandido abrindo `Route.CategoryTransactions` com o scope e a conta do filtro de Relatórios, se houver. Verificar no app e com o TalkBack anunciando o resumo da pizza por grupo e a ação "Ver transações" nas linhas.
-- [ ] 6.3 Pré-requisito: `transacoes-da-categoria` implementado. `Route.CategoryTransactions` com `scope` no lugar de `categoryId` e a tela em modo grupo (cabeçalho do grupo, detalhamento por `scopeSummary`, total igual ao `GroupSlice`, volta para Relatórios se o grupo sumir). Verificar com testes de igualdade com `expenseByGroup`/`incomeByGroup` e no app abrindo Saúde.
+- [ ] 6.2 Pré-requisito: `transacoes-da-categoria` implementado. `Route.CategoryTransactions` com `scope` no lugar de `categoryId` (lido por `CategoryScope.parseRoute`, nunca `parseFilter`) e a tela em modo grupo (cabeçalho do grupo, detalhamento por `scopeSummary`, total igual ao `GroupSlice`, volta para Relatórios se o grupo sumir). Verificar com testes: total da tela, `GroupSlice` e subtotal de cada categoria detalhada iguais para o mesmo mês, tipo e `accountId` (com e sem conta), também depois de trocar o mês na tela; `parseRoute` de grupo inexistente devolve `null`; e no app abrindo Saúde.
+- [ ] 6.3 `ReportsScreen`: escolha "Por categoria"/"Por grupo" (só quando existe grupo do tipo, mantida ao trocar mês/tipo e na volta da tela de transações, como mês e tipo em `transacoes-da-categoria`), botão de expandir separado do toque na linha, seleção só por fatia, e toque na linha de grupo, categoria, "Sem categoria" ou filho expandido abrindo `Route.CategoryTransactions` com o scope e a conta do filtro de Relatórios, se houver. Verificar no app e com o TalkBack anunciando o resumo da pizza por grupo e a ação "Ver transações" nas linhas.
 
 ## 7. Fechamento
 
