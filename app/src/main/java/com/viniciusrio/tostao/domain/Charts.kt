@@ -68,11 +68,16 @@ object Charts {
         "Gráfico de $kindLabel: " + pie.take(3).joinToString(", ") { "${it.label} ${it.percent}%" } +
             if (pie.size > 3) " e mais ${pie.size - 3}" else ""
 
-    /** Receitas e despesas dos [months] meses que terminam em [last], do mais antigo ao mais recente. */
-    fun trend(data: FinanceData, last: YearMonth, zone: ZoneId, nowMillis: Long, months: Int = 6): List<MonthTotals> =
+    /**
+     * Receitas e despesas dos [months] meses que terminam em [last], do mais antigo ao mais recente.
+     * [accountId] null = todas as contas; com a conta, o mesmo recorte de [Reports.month].
+     */
+    fun trend(
+        data: FinanceData, last: YearMonth, zone: ZoneId, nowMillis: Long, months: Int = 6, accountId: String? = null,
+    ): List<MonthTotals> =
         (months - 1 downTo 0).map { back ->
             val m = last.minusMonths(back.toLong())
-            val r = Reports.month(data, m, zone, nowMillis)
+            val r = Reports.month(data, m, zone, nowMillis, accountId)
             MonthTotals(m, r.incomeCents, r.expenseCents)
         }
 

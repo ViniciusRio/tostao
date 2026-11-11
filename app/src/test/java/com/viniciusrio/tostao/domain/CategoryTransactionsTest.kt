@@ -40,18 +40,18 @@ class CategoryTransactionsTest {
     private fun ids(list: List<Transaction>) = list.map { it.id }
 
     /** Toda linha do relatório (os dois tipos) bate com a soma de byCategory, e nada fica de fora. */
-    private fun assertMatchesReport(data: FinanceData, month: YearMonth, nowMillis: Long = now) {
-        val r = Reports.month(data, month, ZONE, nowMillis)
+    private fun assertMatchesReport(data: FinanceData, month: YearMonth, nowMillis: Long = now, accountId: String? = null) {
+        val r = Reports.month(data, month, ZONE, nowMillis, accountId)
         for ((type, slices) in listOf(CategoryType.EXPENSE to r.expenseByCategory, CategoryType.INCOME to r.incomeByCategory)) {
             for (s in slices) {
-                val list = TransactionQueries.byCategory(data, s.category?.id, type, month, ZONE, nowMillis)
+                val list = TransactionQueries.byCategory(data, s.category?.id, type, month, ZONE, nowMillis, accountId)
                 assertEquals("$type ${s.category?.id}", s.totalCents, list.sumOf { it.amountCents })
             }
             // Categorias sem linha no relatório somam zero.
             val withLine = slices.map { it.category?.id }.toSet()
             for (id in data.categories.map { it.id } + listOf<String?>(null)) {
                 if (id in withLine) continue
-                assertEquals(0L, TransactionQueries.byCategory(data, id, type, month, ZONE, nowMillis).sumOf { it.amountCents })
+                assertEquals(0L, TransactionQueries.byCategory(data, id, type, month, ZONE, nowMillis, accountId).sumOf { it.amountCents })
             }
         }
     }
@@ -112,5 +112,12 @@ class CategoryTransactionsTest {
         assertEquals(listOf(30000L), onlyB.map { it.amountCents })
         val all = TransactionQueries.byCategory(base, "Mercado", CategoryType.EXPENSE, nov, ZONE, now)
         assertEquals(ids(all.filter { it.accountId == "a" }), ids(TransactionQueries.byCategory(base, "Mercado", CategoryType.EXPENSE, nov, ZONE, now, accountId = "a")))
+    }
+
+    @Test fun accountTotalsMatchReportFilteredBySameAccount() {
+        for (acc in listOf(null, "a", "b", "inexistente")) {
+            assertMatchesReport(base, nov, accountId = acc)
+            assertMatchesReport(base, oct, accountId = acc)
+        }
     }
 }

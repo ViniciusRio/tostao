@@ -63,4 +63,29 @@ class ChartsTest {
         assertEquals(500L, t.last().incomeCents)
         assertEquals(0L, t.sumOf { it.expenseCents } - 100L)
     }
+
+    @Test fun trendByAccount() {
+        val data = FinanceData(
+            accounts = listOf(account("BTG"), account("Pix")),
+            transactions = listOf(
+                tx(TxType.EXPENSE, 100, "Pix", millis(2026, 8, 5)),
+                tx(TxType.EXPENSE, 300, "BTG", millis(2026, 8, 6)),
+                tx(TxType.INCOME, 500, "BTG", millis(2026, 11, 5)),
+                tx(TxType.INCOME, 50, "Pix", millis(2026, 11, 5)),
+                tx(TxType.TRANSFER, 777, "BTG", millis(2026, 11, 1), to = "Pix"),
+                tx(TxType.INCOME, 20, "Pix", millis(2026, 11, 2), adjustment = true),
+            ),
+        )
+        val last = YearMonth.of(2026, 11)
+        val now = millis(2026, 11, 10)
+        val pix = Charts.trend(data, last, ZONE, now, accountId = "Pix")
+        assertEquals((6..11).map { YearMonth.of(2026, it) }, pix.map { it.month })
+        assertEquals(100L, pix.first { it.month.monthValue == 8 }.expenseCents)
+        assertEquals(50L, pix.last().incomeCents)
+        val btg = Charts.trend(data, last, ZONE, now, accountId = "BTG")
+        assertEquals(300L, btg.first { it.month.monthValue == 8 }.expenseCents)
+        assertEquals(500L, btg.last().incomeCents)
+        assertEquals(Charts.trend(data, last, ZONE, now), Charts.trend(data, last, ZONE, now, accountId = null))
+        assertEquals(400L, Charts.trend(data, last, ZONE, now).first { it.month.monthValue == 8 }.expenseCents)
+    }
 }

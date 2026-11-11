@@ -15,13 +15,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,23 +65,37 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
     val hidden by vm.hideValues.collectAsState()
     val minute by vm.minute.collectAsState()
     val today = remember(minute) { vm.today() }
-    // Mês e tipo vivem no ViewModel para sobreviver à ida e volta de Transações da categoria.
+    // Mês, tipo e conta vivem no ViewModel para sobreviver à ida e volta de Transações da categoria.
     val chosenMonth by vm.reportMonth.collectAsState()
     val month = chosenMonth ?: YearMonth.from(today)
     val kind by vm.reportKind.collectAsState()
+    val chosenAccount by vm.reportAccount.collectAsState()
+    // Uma conta excluída deixa de valer na hora, e o filtro volta para "Todas as contas".
+    val accountId = chosenAccount?.takeIf { it in data.accountById }
+    LaunchedEffect(chosenAccount, accountId) {
+        if (chosenAccount != null && accountId == null) vm.reportAccount.value = null
+    }
     val setMonth: (YearMonth) -> Unit = { vm.reportMonth.value = it }
     val asOf by vm.reportAsOf.collectAsState()
-    val report = remember(data, month, asOf) { Reports.month(data, month, vm.zone, asOf) }
-    val trend = remember(data, month, asOf) { Charts.trend(data, month, vm.zone, asOf) }
+    val report = remember(data, month, asOf, accountId) { Reports.month(data, month, vm.zone, asOf, accountId) }
+    val trend = remember(data, month, asOf, accountId) { Charts.trend(data, month, vm.zone, asOf, accountId = accountId) }
     val sem = LocalSemantic.current
     val slices = if (kind == CategoryType.EXPENSE) report.expenseByCategory else report.incomeByCategory
     val pie = remember(slices) { Charts.pie(slices) }
     // Seleção: só a fatia do gráfico. A linha da lista abre Transações da categoria e não seleciona.
-    var sliceSel by remember(month, kind) { mutableStateOf<Int?>(null) }
+    var sliceSel by remember(month, kind, accountId) { mutableStateOf<Int?>(null) }
     val kindLabel = if (kind == CategoryType.EXPENSE) "despesas" else "receitas"
     val center = sliceSel?.let { pie.getOrNull(it) }?.let { DonutCenter(it.label, it.cents, it.percent) }
 
     LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
+        item {
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { FilterChip(accountId == null, { vm.reportAccount.value = null }, { Text("Todas as contas") }) }
+                items(data.accounts, key = { it.id }) { a ->
+                    FilterChip(accountId == a.id, { vm.reportAccount.value = if (accountId == a.id) null else a.id }, { Text(a.name) })
+                }
+            }
+        }
         item { MonthSwitcher(month, Periods.monthLabel(month, today), onChange = setMonth) }
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -135,7 +153,7 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
             val open = {
                 // Fixa o mês exibido: se o dia virar com a tela aberta, a volta mantém este mês.
                 vm.reportMonth.value = month
-                vm.navigate(Route.CategoryTransactions(s.category?.id, kind, month.toString()))
+                vm.navigate(Route.CategoryTransactions(s.category?.id, kind, month.toString(), accountId))
             }
             Row(
                 Modifier.fillMaxWidth()

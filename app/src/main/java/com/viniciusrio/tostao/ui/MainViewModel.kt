@@ -81,6 +81,9 @@ class MainViewModel(
     /** Tipo de Relatórios (despesas ou receitas), mantido como [reportMonth]. */
     val reportKind = MutableStateFlow(CategoryType.EXPENSE)
 
+    /** Conta de Relatórios (null = todas as contas), mantida como [reportMonth]. */
+    val reportAccount = MutableStateFlow<String?>(null)
+
     private val _hideValues = MutableStateFlow(prefs.getBoolean(KEY_HIDE, false))
     val hideValues: StateFlow<Boolean> = _hideValues.asStateFlow()
 
@@ -225,10 +228,11 @@ class MainViewModel(
     // Navegação
     fun navigate(r: Route) {
         if (r is Route.Tab) {
-            // Mês e tipo de Relatórios só se preservam na ida e volta de uma rota filha; trocar de aba zera.
+            // Mês, tipo e conta de Relatórios só se preservam na ida e volta de uma rota filha; trocar de aba zera.
             if (backStack.lastOrNull() != r) {
                 reportMonth.value = null
                 reportKind.value = CategoryType.EXPENSE
+                reportAccount.value = null
             }
             backStack.clear(); backStack.add(r)
         } else {
