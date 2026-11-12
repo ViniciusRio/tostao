@@ -247,7 +247,7 @@ class BackupCodecTest {
         // Num v1, os campos de grupo são ignorados mesmo com tipo errado (não recusam o arquivo).
         val json = asVersion1(BackupCodec.encode(sample(), created))
             .replaceFirst("\"budgets\":", "\"categoryGroups\": \"x\",\n    \"budgets\":")
-            .replaceFirst("\"order\": 0", "\"order\": 0, \"groupId\": 42")
+            .replaceFirst("\"name\": \"Alimentação\",", "\"name\": \"Alimentação\", \"groupId\": 42,")
         assertTrue(json.contains("\"categoryGroups\": \"x\"") && json.contains("\"groupId\": 42"))
         val back = valid(json)
         assertTrue(back.data.groups.isEmpty())
