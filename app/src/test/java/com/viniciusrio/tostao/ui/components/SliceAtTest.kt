@@ -1,12 +1,13 @@
 package com.viniciusrio.tostao.ui.components
 
+import com.viniciusrio.tostao.domain.CategoryScope
 import com.viniciusrio.tostao.domain.PieSlice
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SliceAtTest {
-    private fun s(c: Long) = PieSlice("x", c, 0, 0, listOf(null))
+    private fun s(c: Long) = PieSlice("x", c, 0, 0, listOf(CategoryScope.None))
     private val half = listOf(s(50), s(50))
 
     @Test fun picksSliceByClockwiseAngleFromTop() {

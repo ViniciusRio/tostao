@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.unit.dp
+import com.viniciusrio.tostao.domain.CategoryScope
 import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.Charts
 import com.viniciusrio.tostao.domain.FinanceData
@@ -81,7 +82,7 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
     val trend = remember(data, month, asOf, accountId) { Charts.trend(data, month, vm.zone, asOf, accountId = accountId) }
     val sem = LocalSemantic.current
     val slices = if (kind == CategoryType.EXPENSE) report.expenseByCategory else report.incomeByCategory
-    val pie = remember(slices) { Charts.pie(slices) }
+    val pie = remember(slices) { Charts.pie(Charts.categoryItems(slices)) }
     // Seleção: só a fatia do gráfico. A linha da lista abre Transações da categoria e não seleciona.
     var sliceSel by remember(month, kind, accountId) { mutableStateOf<Int?>(null) }
     val kindLabel = if (kind == CategoryType.EXPENSE) "despesas" else "receitas"
@@ -149,7 +150,7 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
         itemsIndexed(slices, key = { _, s -> s.category?.id ?: "none" }) { _, s ->
             val color = Color(s.category?.colorArgb ?: 0xFF7D7D85)
             val name = s.category?.name ?: "Sem categoria"
-            val isSel = sliceSel?.let { pie.getOrNull(it) }?.categories?.any { it?.id == s.category?.id } == true
+            val isSel = (s.category?.let { CategoryScope.Category(it.id) } ?: CategoryScope.None) in Charts.keysOf(pie, sliceSel)
             val open = {
                 // Fixa o mês exibido: se o dia virar com a tela aberta, a volta mantém este mês.
                 vm.reportMonth.value = month
