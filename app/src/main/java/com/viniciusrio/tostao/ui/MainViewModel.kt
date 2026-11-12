@@ -20,6 +20,7 @@ import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Balances
 import com.viniciusrio.tostao.domain.Budget
 import com.viniciusrio.tostao.domain.Category
+import com.viniciusrio.tostao.domain.CategoryGroup
 import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.PlannedRule
@@ -411,6 +412,17 @@ class MainViewModel(
     fun deleteCategory(c: Category) = viewModelScope.launch {
         repo.deleteCategory(c.id)
         say("Categoria \"${c.name}\" excluída")
+    }
+
+    // Grupos de categorias
+    fun saveGroup(g: CategoryGroup, memberIds: Set<String>, isNew: Boolean) = viewModelScope.launch {
+        repo.saveGroup(if (isNew) g.copy(order = repo.nextGroupOrder()) else g, memberIds)
+        say(if (isNew) "Grupo criado" else "Grupo salvo")
+    }
+
+    fun deleteGroup(g: CategoryGroup) = viewModelScope.launch {
+        repo.deleteGroup(g.id)
+        say("Grupo \"${g.name}\" excluído")
     }
 
     // Transações

@@ -55,4 +55,43 @@ class TransactionQueriesTest {
         assertEquals(listOf(newer.id, older.id), list.map { it.id })
         assertEquals(listOf(newer.id, older.id), TransactionQueries.groupByDay(list, ZONE, LocalDate.of(2026, 11, 10))[0].items.map { it.id })
     }
+
+    // ---- Seletor de categoria agrupado ----
+
+    private fun cat(id: String, order: Int, group: String? = null, type: CategoryType = CategoryType.EXPENSE) =
+        category(id, type).copy(order = order, groupId = group)
+
+    private fun grp(id: String, order: Int, type: CategoryType = CategoryType.EXPENSE) =
+        CategoryGroup(id, id, type, 0, "tag", order)
+
+    private fun sections(data: FinanceData, recent: List<String>, type: CategoryType = CategoryType.EXPENSE) =
+        TransactionQueries.categorySections(data, type, recent).map { (it.group?.id ?: "-") to it.categories.map { c -> c.id } }
+
+    @Test fun categorySectionsWithoutGroupsKeepTodaysOrder() {
+        val data = FinanceData(categories = listOf(cat("a", 0), cat("b", 1), cat("c", 2), cat("in", 3, type = CategoryType.INCOME)))
+        assertEquals(listOf("-" to listOf("c", "a", "b")), sections(data, listOf("c", "in")))
+        // Um grupo só de receitas não muda o seletor de despesas.
+        val incomeGroup = data.copy(groups = listOf(grp("renda", 0, CategoryType.INCOME)))
+        assertEquals(listOf("-" to listOf("c", "a", "b")), sections(incomeGroup, listOf("c")))
+    }
+
+    @Test fun categorySectionsOrderGroupsByMostRecentUse() {
+        val data = FinanceData(
+            categories = listOf(
+                cat("plano", 0, "saude"), cat("psi", 1, "saude"), cat("luz", 2, "contas"), cat("agua", 3, "contas"),
+                cat("lazer", 4), cat("mercado", 5), cat("orfa", 6, "apagado"),
+            ),
+            groups = listOf(grp("saude", 0), grp("contas", 1), grp("vazio", 2)),
+        )
+        // Água (Contas) foi usada por último: Contas vem antes de Saúde; dentro, recentes primeiro.
+        assertEquals(
+            listOf("contas" to listOf("agua", "luz"), "saude" to listOf("psi", "plano"), "-" to listOf("mercado", "lazer", "orfa")),
+            sections(data, listOf("agua", "mercado", "psi")),
+        )
+        // Sem uso: grupos pela ordem de criação; grupo vazio não aparece; grupo inexistente vale "Sem grupo".
+        assertEquals(
+            listOf("saude" to listOf("plano", "psi"), "contas" to listOf("luz", "agua"), "-" to listOf("lazer", "mercado", "orfa")),
+            sections(data, emptyList()),
+        )
+    }
 }

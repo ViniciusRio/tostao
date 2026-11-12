@@ -43,7 +43,7 @@ import com.viniciusrio.tostao.ui.MainViewModel
 import com.viniciusrio.tostao.ui.components.AccountChips
 import com.viniciusrio.tostao.ui.components.AmountField
 import com.viniciusrio.tostao.ui.components.BackTopBar
-import com.viniciusrio.tostao.ui.components.CategoryChips
+import com.viniciusrio.tostao.ui.components.GroupedCategoryChips
 import com.viniciusrio.tostao.ui.components.ConfirmDialog
 import com.viniciusrio.tostao.ui.components.SectionHeader
 import com.viniciusrio.tostao.ui.components.SegmentedChoice
@@ -89,10 +89,8 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
 
     val catType = if (type == TxType.INCOME) CategoryType.INCOME else CategoryType.EXPENSE
     val recent = remember(data) { TransactionQueries.recentCategoryIds(data) }
-    val cats = remember(data, catType, recent) {
-        data.categories.filter { it.type == catType }
-            .sortedWith(compareBy({ recent.indexOf(it.id).let { i -> if (i < 0) Int.MAX_VALUE else i } }, { it.order }))
-    }
+    val sections = remember(data, catType, recent) { TransactionQueries.categorySections(data, catType, recent) }
+    val cats = sections.flatMap { it.categories }
     val effectiveCategory = categoryId?.takeIf { id ->
         cats.any { it.id == id } || "${catType.name}:$id" in createdCategories
     }
@@ -153,7 +151,7 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
                 }
             } else {
                 SectionHeader("Categoria")
-                CategoryChips(cats, setOfNotNull(effectiveCategory), onAdd = { addingCategory = true }) { id ->
+                GroupedCategoryChips(sections, setOfNotNull(effectiveCategory), onAdd = { addingCategory = true }) { id ->
                     categoryId = if (effectiveCategory == id) null else id
                 }
             }

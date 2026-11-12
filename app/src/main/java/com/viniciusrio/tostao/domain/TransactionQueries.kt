@@ -13,6 +13,9 @@ data class TransactionFilter(
     val accountId: String? = null,
 )
 
+/** Seção do seletor de categoria: um grupo (ou "Sem grupo", [group] nulo) e suas categorias. */
+data class CategorySection(val group: CategoryGroup?, val categories: List<Category>)
+
 object TransactionQueries {
     fun normalize(s: String): String =
         Normalizer.normalize(s, Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "").lowercase().trim()
@@ -83,6 +86,27 @@ object TransactionQueries {
     /** Ids de categorias ordenados por uso mais recente, para sugerir no formulário. */
     fun recentCategoryIds(data: FinanceData): List<String> =
         data.transactions.sortedByDescending { it.dateTimeMillis }.mapNotNull { it.categoryId }.distinct()
+
+    /**
+     * Categorias do [type] para o seletor dos formulários. Sem grupos do tipo: uma única seção
+     * (sem título), igual à lista de sempre. Com grupos: uma seção por grupo com categorias,
+     * ordenadas pelo uso mais recente de qualquer categoria do grupo (empate pela ordem de
+     * criação), e "Sem grupo" por último. Dentro de cada seção, as de [recent] primeiro e depois
+     * pela ordem da categoria.
+     */
+    fun categorySections(data: FinanceData, type: CategoryType, recent: List<String>): List<CategorySection> {
+        val rank = recent.withIndex().associate { (i, id) -> id to i }
+        fun rankOf(id: String) = rank[id] ?: Int.MAX_VALUE
+        val cats = data.categories.filter { it.type == type }.sortedWith(compareBy({ rankOf(it.id) }, { it.order }))
+        val byGroup = cats.groupBy { data.groupOf(it)?.id }
+        val groups = data.groups.filter { it.type == type && !byGroup[it.id].isNullOrEmpty() }
+        if (groups.isEmpty()) return listOf(CategorySection(null, cats))
+        val grouped = groups
+            .sortedWith(compareBy({ g -> byGroup.getValue(g.id).minOf { rankOf(it.id) } }, { it.order }))
+            .map { CategorySection(it, byGroup.getValue(it.id)) }
+        val loose = byGroup[null].orEmpty()
+        return if (loose.isEmpty()) grouped else grouped + CategorySection(null, loose)
+    }
 
     fun lastUsedAccountId(data: FinanceData): String? =
         data.transactions.maxByOrNull { it.dateTimeMillis }?.accountId?.takeIf { it in data.accountById }

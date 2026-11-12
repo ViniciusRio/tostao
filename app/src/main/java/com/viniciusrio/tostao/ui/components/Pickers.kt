@@ -39,12 +39,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Category
+import com.viniciusrio.tostao.domain.CategorySection
+import com.viniciusrio.tostao.domain.TransactionQueries
 import com.viniciusrio.tostao.domain.Money
 import com.viniciusrio.tostao.ui.theme.Tabular
 
@@ -114,6 +117,29 @@ fun AccountChips(accounts: List<Account>, selected: String?, onSelect: (String) 
                 leadingIcon = { Icon(AppIcons.of(a.icon), null, tint = Color(a.colorArgb), modifier = Modifier.size(18.dp)) },
             )
         }
+    }
+}
+
+/**
+ * Seletor de categoria por seções ([TransactionQueries.categorySections]). Sem grupos há uma
+ * seção só, sem título, e o seletor fica igual a [CategoryChips].
+ */
+@Composable
+fun GroupedCategoryChips(
+    sections: List<CategorySection>, selected: Set<String>, onAdd: (() -> Unit)? = null, onToggle: (String) -> Unit,
+) {
+    if (sections.size <= 1 && sections.firstOrNull()?.group == null) {
+        CategoryChips(sections.firstOrNull()?.categories.orEmpty(), selected, onAdd, onToggle)
+        return
+    }
+    sections.forEachIndexed { i, sec ->
+        Text(
+            sec.group?.name ?: "Sem grupo",
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = if (i == 0) 0.dp else 8.dp, bottom = 4.dp)
+                .semantics { heading() },
+            style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        CategoryChips(sec.categories, selected, if (i == sections.lastIndex) onAdd else null, onToggle)
     }
 }
 
