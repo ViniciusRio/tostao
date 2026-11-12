@@ -47,8 +47,8 @@
 
 - [x] 7.1 Atualizar o README (grupos, soma no valor, backup formato 2) e rodar `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin`, tudo verde.
   - `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:compileDebugAndroidTestKotlin :app:lintDebug` verde (114 testes JVM, lint sem erros e sem avisos novos além da dica `AutoboxingStateCreation` no formulário de grupo, igual à que já existe no de categoria). `am instrument` no A26: OK (13 testes).
-- [ ] 7.2 Subir o `versionCode` para o próximo número (o PR #8 já usa 2). Verificação no aparelho com um banco v1 real: instalar por cima da versão release assinada com a mesma chave, confirmar que os dados continuam lá e que nenhuma categoria tem grupo, criar grupos, fazer backup, restaurar e conferir Relatórios e Transações.
-  - `versionCode` 5 e `versionName` 0.5.0 já no build. **Pendente:** a instalação da release assinada por cima da 0.4.0 no A26 (dados reais) espera a liberação do Vinícius.
+- [x] 7.2 Subir o `versionCode` para o próximo número (o PR #8 já usa 2). Verificação no aparelho com um banco v1 real: instalar por cima da versão release assinada com a mesma chave, confirmar que os dados continuam lá e que nenhuma categoria tem grupo, criar grupos, fazer backup, restaurar e conferir Relatórios e Transações.
+  - Feito no A26 em 2026-11-11, liberado pelo Vinícius: backup pelo app 0.4.0 numa pasta local do aparelho, release 0.5.0 (versionCode 5) assinada com o mesmo certificado da instalada (conferido com `apksigner`) e instalada com `pm install -r`, sem desinstalar. Depois da migração, saldo, despesas e número de transações iguais aos do backup; nenhuma categoria com grupo; "Último backup" mantido; sem erro no logcat. **Verificação parcial:** criar grupos, fazer backup e restaurar não foi feito nos dados reais, para não alterá-los; esses fluxos foram verificados no app debug e nos testes.
 
 ## Workflow follow-up
 
