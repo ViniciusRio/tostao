@@ -6,8 +6,9 @@
 
 ## 1. Soma no campo Valor
 
-- [ ] 1.1 `Money.parseSum` e `Money.isSum` conforme o design (decisão 6). Verificar com testes em `MoneyTest`: `12,50+8,30+15` = 3580; `1.234,56+10` = 124456; `45.90+0,10` = 4600; espaços ignorados (`12 + 3`); `+12`, `12+`, `12++3` inválidos; `0+5` = 500 e `0+0` inválido; 50 parcelas válido e 51 inválido; total acima de `MAX_CENTS` inválido; valor simples igual a `Money.parse`.
-- [ ] 1.2 `AmountField(allowSum)` com `TextFieldValue`: aceita "+" (inclusive em texto colado), limite de 800 caracteres, botão "Somar" com descrição para leitor de tela que insere "+" na posição do cursor, e "= R$ X" no texto de apoio quando há mais de uma parcela válida. Ligar só no formulário de transação, salvando `parseSum`. Verificar no app: digitar `12,50+8,30+15`, ver "= R$ 35,80", salvar e conferir R$ 35,80 na lista; `12,50+` deixa Salvar desabilitado.
+- [x] 1.1 `Money.parseSum` e `Money.isSum` conforme o design (decisão 6). Verificar com testes em `MoneyTest`: `12,50+8,30+15` = 3580; `1.234,56+10` = 124456; `45.90+0,10` = 4600; espaços ignorados (`12 + 3`); `+12`, `12+`, `12++3` inválidos; `0+5` = 500 e `0+0` inválido; 50 parcelas válido e 51 inválido; total acima de `MAX_CENTS` inválido; valor simples igual a `Money.parse`.
+- [x] 1.2 `AmountField(allowSum)` com `TextFieldValue`: aceita "+" (inclusive em texto colado), limite de 800 caracteres, botão "Somar" com descrição para leitor de tela que insere "+" na posição do cursor, e "= R$ X" no texto de apoio quando há mais de uma parcela válida. Ligar só no formulário de transação, salvando `parseSum`. Verificar no app: digitar `12,50+8,30+15`, ver "= R$ 35,80", salvar e conferir R$ 35,80 na lista; `12,50+` deixa Salvar desabilitado.
+  - Verificado no A26 (debug `com.viniciusrio.tostao.debug`, instalado ao lado da release): `12,50`, botão Somar, `8,30`, Somar, `15` mostra "= R$ 35,80" com o teclado aberto; `12,50+` mostra o erro e deixa Salvar desabilitado; salvo, a Início mostra -R$ 35,80; editar mostra `35,80`.
 
 ## 2. Modelo e banco dos grupos
 

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="nova_despesa"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_expense"
+        android:shortcutShortLabel="@string/shortcut_expense_short"
+        android:shortcutLongLabel="@string/shortcut_expense_long">
+        <intent
+            android:action="com.viniciusrio.tostao.action.QUICK_ADD"
+            android:targetPackage="com.viniciusrio.tostao.debug"
+            android:targetClass="com.viniciusrio.tostao.QuickAddActivity">
+            <extra android:name="type" android:value="EXPENSE" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="nova_receita"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_income"
+        android:shortcutShortLabel="@string/shortcut_income_short"
+        android:shortcutLongLabel="@string/shortcut_income_long">
+        <intent
+            android:action="com.viniciusrio.tostao.action.QUICK_ADD"
+            android:targetPackage="com.viniciusrio.tostao.debug"
+            android:targetClass="com.viniciusrio.tostao.QuickAddActivity">
+            <extra android:name="type" android:value="INCOME" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="transferencia"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_transfer"
+        android:shortcutShortLabel="@string/shortcut_transfer_short"
+        android:shortcutLongLabel="@string/shortcut_transfer_long">
+        <intent
+            android:action="com.viniciusrio.tostao.action.QUICK_ADD"
+            android:targetPackage="com.viniciusrio.tostao.debug"
+            android:targetClass="com.viniciusrio.tostao.QuickAddActivity">
+            <extra android:name="type" android:value="TRANSFER" />
+        </intent>
+    </shortcut>
+</shortcuts>

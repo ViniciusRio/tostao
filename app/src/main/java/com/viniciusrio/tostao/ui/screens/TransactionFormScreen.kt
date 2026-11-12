@@ -97,7 +97,7 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
         cats.any { it.id == id } || "${catType.name}:$id" in createdCategories
     }
 
-    val cents = Money.parse(amount)
+    val cents = Money.parseSum(amount)
     val sameAccount = type == TxType.TRANSFER && toAccountId != null && toAccountId == accountId
     val valid = cents != null && cents > 0 && accountId != null &&
         (type != TxType.TRANSFER || (toAccountId != null && !sameAccount))
@@ -132,6 +132,7 @@ fun TransactionFormScreen(vm: MainViewModel, data: FinanceData, initialType: TxT
             AmountField(
                 amount, { amount = it }, "Valor",
                 Modifier.padding(horizontal = 20.dp, vertical = 8.dp).focusRequester(focus),
+                allowSum = true,
             )
             SectionHeader(if (type == TxType.TRANSFER) "De" else "Conta")
             AccountChips(data.accounts, accountId, { accountId = it })

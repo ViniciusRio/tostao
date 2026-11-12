@@ -27,6 +27,12 @@ android {
         versionName = "0.4.0"
     }
 
+    // O debug é um app separado: instala ao lado da release (que tem dados reais) e os testes
+    // instrumentados rodam nele sem tocar no banco da release.
+    buildTypes.getByName("debug") {
+        applicationIdSuffix = ".debug"
+    }
+
     // Assinatura de release lida de fora do repositório (keystore local, nunca commitada).
     // Caminho padrão: ~/.android/tostao/keystore.properties; pode ser trocado por TOSTAO_KEYSTORE_PROPS.
     val keystorePropsFile = file(

@@ -34,6 +34,30 @@ object Money {
         return if (cents > MAX_CENTS) null else cents
     }
 
+    const val MAX_SUM_PARTS = 50
+
+    private fun sumParts(input: String): List<String> =
+        input.replace(" ", "").replace("\u00A0", "").split('+')
+
+    /**
+     * Soma de parcelas separadas por "+" ("12,50+8,30+15"), cada uma no formato de [parse].
+     * Inválido com parcela vazia, mais de [MAX_SUM_PARTS] parcelas, total zero ou acima de [MAX_CENTS].
+     */
+    fun parseSum(input: String): Long? {
+        val parts = sumParts(input)
+        if (parts.size > MAX_SUM_PARTS) return null
+        var total = 0L
+        for (part in parts) {
+            if (part.isEmpty()) return null
+            total += parse(part) ?: return null
+            if (total > MAX_CENTS) return null
+        }
+        return if (total > 0) total else null
+    }
+
+    /** Se o texto tem mais de uma parcela ("12+3"). */
+    fun isSum(input: String): Boolean = input.contains('+')
+
     private fun thousandsOk(s: String): Boolean {
         val groups = s.split('.')
         return groups.first().length in 1..3 && groups.drop(1).all { it.length == 3 }
