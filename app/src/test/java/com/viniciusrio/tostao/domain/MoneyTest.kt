@@ -38,4 +38,38 @@ class MoneyTest {
         val total = List(10) { Money.parse("0,10")!! }.sum()
         assertEquals(100L, total)
     }
+
+    @Test fun parsesSumOfParts() {
+        assertEquals(3580L, Money.parseSum("12,50+8,30+15"))
+        assertEquals(124456L, Money.parseSum("1.234,56+10"))
+        assertEquals(124456L, Money.parseSum("1.234,56 + 10"))
+        assertEquals(4600L, Money.parseSum("45.90+0,10"))
+        assertEquals(1500L, Money.parseSum("12 + 3"))
+        assertEquals(500L, Money.parseSum("0+5"))
+    }
+
+    @Test fun rejectsInvalidSums() {
+        assertNull(Money.parseSum("+12"))
+        assertNull(Money.parseSum("12+"))
+        assertNull(Money.parseSum("12++3"))
+        assertNull(Money.parseSum("0+0"))
+        assertNull(Money.parseSum("12+abc"))
+        assertNull(Money.parseSum("999.999.999,99+0,01"))
+        assertEquals(Money.MAX_CENTS, Money.parseSum("999.999.999,98+0,01"))
+    }
+
+    @Test fun limitsSumToFiftyParts() {
+        assertEquals(5000L, Money.parseSum(List(50) { "1" }.joinToString("+")))
+        assertNull(Money.parseSum(List(51) { "1" }.joinToString("+")))
+    }
+
+    @Test fun singleValueSumMatchesParse() {
+        listOf("45,90", "45,9", "1.234,56", "45.90", "1.234", ",5", "999.999.999,99").forEach {
+            assertEquals(it, Money.parse(it), Money.parseSum(it))
+        }
+        assertNull(Money.parseSum(""))
+        assertNull(Money.parseSum("0"))
+        assertEquals(false, Money.isSum("12,50"))
+        assertEquals(true, Money.isSum("12,50+3"))
+    }
 }

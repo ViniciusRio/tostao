@@ -25,7 +25,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.viniciusrio.tostao.domain.CategoryScope
 import com.viniciusrio.tostao.domain.CategoryType
+import com.viniciusrio.tostao.domain.Reports
 import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.Money
 import com.viniciusrio.tostao.domain.Periods
@@ -39,7 +41,10 @@ import com.viniciusrio.tostao.ui.components.MoneyText
 import com.viniciusrio.tostao.ui.components.TransactionRow
 import java.time.YearMonth
 
-/** Transações de uma categoria no mês, com as mesmas regras (e o mesmo total) da linha de Relatórios. */
+/**
+ * Transações de um item do relatório no mês (categoria, "Sem categoria" ou grupo), com as mesmas
+ * regras (e o mesmo total) da linha de Relatórios. Em modo grupo, mostra o detalhamento por categoria.
+ */
 @Composable
 fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Route.CategoryTransactions) {
     val hidden by vm.hideValues.collectAsState()
@@ -48,20 +53,26 @@ fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Rout
     // O mês desta tela vive na própria rota (no topo da pilha): sobrevive à ida e volta da edição
     // e à rotação, e trocá-lo aqui não altera Relatórios.
     val month = YearMonth.parse(route.month)
-    val category = route.categoryId?.let { data.categoryById[it] }
-    val removed = route.categoryId != null && category == null
+    // parseRoute (nunca parseFilter): um item que deixou de existir não vira "todas as transações".
+    val scope = CategoryScope.parseRoute(route.scope, data)
+    val removed = scope == null
 
-    // Só uma categoria real pode deixar de existir; "Sem categoria" nunca é expulsa.
+    // Só uma categoria ou um grupo real pode deixar de existir; "Sem categoria" nunca é expulsa.
     LaunchedEffect(removed) {
         if (removed && vm.backStack.lastOrNull() == route) vm.back()
     }
-    if (removed) return
+    if (scope == null) return
 
-    val name = category?.name ?: "Sem categoria"
+    val category = (scope as? CategoryScope.Category)?.let { data.categoryById[it.id] }
+    val group = (scope as? CategoryScope.Group)?.let { data.groupById[it.id] }
+    val name = group?.name ?: category?.name ?: "Sem categoria"
+    val icon = group?.icon ?: category?.icon ?: Reports.UNCATEGORIZED_ICON
+    val color = group?.colorArgb ?: category?.colorArgb ?: Reports.UNCATEGORIZED_COLOR
     val asOf by vm.reportAsOf.collectAsState()
     val txs = remember(data, route, month, asOf) {
-        TransactionQueries.byCategory(data, route.categoryId, route.type, month, vm.zone, asOf, route.accountId)
+        TransactionQueries.byScope(data, scope, route.type, month, vm.zone, asOf, route.accountId)
     }
+    val children = remember(txs, scope, data) { TransactionQueries.scopeSummary(txs, scope, data).children }
     val groups = remember(txs, today) { TransactionQueries.groupByDay(txs, vm.zone, today) }
     val total = txs.sumOf { it.amountCents }
     val count = txs.size
@@ -82,7 +93,7 @@ fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Rout
                         },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconBadge(category?.icon ?: "dots", category?.colorArgb ?: 0xFF7D7D85, size = 48.dp)
+                    IconBadge(icon, color, size = 48.dp)
                     Spacer(Modifier.size(16.dp))
                     Column(Modifier.weight(1f)) {
                         Text(name, style = MaterialTheme.typography.titleMedium)
@@ -92,6 +103,23 @@ fun CategoryTransactionsScreen(vm: MainViewModel, data: FinanceData, route: Rout
                         )
                     }
                     MoneyText(total, hidden = hidden, style = MaterialTheme.typography.titleLarge)
+                }
+            }
+            // Grupo: detalhamento por categoria com movimento, com o percentual dentro do grupo.
+            if (children.isNotEmpty()) {
+                items(children, key = { "d:" + (it.category?.id ?: "none") }) { c ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 84.dp, end = 20.dp, top = 2.dp, bottom = 2.dp)
+                            .clearAndSetSemantics {
+                                contentDescription = "${c.category?.name ?: "Sem categoria"}, " +
+                                    "${if (hidden) "valor oculto" else Money.format(c.totalCents)}, ${c.percent}%"
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(c.category?.name ?: "Sem categoria", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        Text("${c.percent}%  ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        MoneyText(c.totalCents, hidden = hidden, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
             item { MonthSwitcher(month, Periods.monthLabel(month, today)) { vm.replaceTop(route.copy(month = it.toString())) } }

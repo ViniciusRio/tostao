@@ -6,6 +6,7 @@ import com.viniciusrio.tostao.data.FinanceRepository
 import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Budget
 import com.viniciusrio.tostao.domain.Category
+import com.viniciusrio.tostao.domain.CategoryGroup
 import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.PlannedRule
 import com.viniciusrio.tostao.domain.RecurrenceUnit
@@ -50,7 +51,11 @@ class FinanceRepositoryTest {
 
     private fun backupSample() = com.viniciusrio.tostao.domain.FinanceData(
         accounts = listOf(acc("X").copy(order = 1), acc("Y").copy(name = "Y2", order = 0)),
-        categories = listOf(Category("food", "Comida", CategoryType.EXPENSE, 0, "tag", 0)),
+        categories = listOf(
+            Category("food", "Comida", CategoryType.EXPENSE, 0, "tag", 0, groupId = "g-casa"),
+            Category("fun", "Lazer", CategoryType.EXPENSE, 0, "fun", 1),
+        ),
+        groups = listOf(CategoryGroup("g-casa", "Casa", CategoryType.EXPENSE, 0, "home", 0)),
         transactions = listOf(tx("n1", "X", cat = "food"), tx("n2", "X", to = "Y")),
         rules = listOf(PlannedRule("rr", TxType.EXPENSE, 500, "Y", "food", "Luz", LocalDate.of(2026, 1, 31), RecurrenceUnit.MONTH, 1, null, 4)),
         budgets = listOf(Budget("bb", "Comida", 1000, false, setOf("food"), 0), Budget("all", "Tudo", 9000, true, emptySet(), 1)),
@@ -68,10 +73,13 @@ class FinanceRepositoryTest {
         assertEquals(incoming.rules, snap.rules)
         assertEquals(4, snap.rules.single().consumedOccurrences)
         assertEquals(incoming.budgets.sortedBy { it.id }, snap.budgets.sortedBy { it.id })
+        assertEquals(incoming.groups, snap.groups)
     }
 
     @Test fun replaceAllFailingMidwayKeepsOldData() = runBlocking {
         repo.saveAccount(acc("old")); repo.saveTransaction(tx("old-t", "old"))
+        repo.saveCategory(Category("old-c", "Velha", CategoryType.EXPENSE, 0, "tag", 0))
+        repo.saveGroup(group("old-g"), setOf("old-c"))
         repo.afterClearForTest = { error("falha simulada") }
         val failed = runCatching { repo.replaceAll(backupSample()) }.isFailure
         repo.afterClearForTest = null
@@ -79,6 +87,8 @@ class FinanceRepositoryTest {
         val snap = repo.snapshot()
         assertEquals(listOf("old"), snap.accounts.map { it.id })
         assertEquals(listOf("old-t"), snap.transactions.map { it.id })
+        assertEquals(listOf("old-g"), snap.groups.map { it.id })
+        assertEquals("old-g", snap.categories.single().groupId)
     }
 
     @Test fun deletingAccountRemovesTransfersBothWaysAndCanBeRestored() = runBlocking {
@@ -135,5 +145,64 @@ class FinanceRepositoryTest {
         assertNull(data.rules.single().categoryId)
         assertEquals(setOf("both", "all"), data.budgets.map { it.id }.toSet())
         assertEquals(setOf("c2"), data.budgets.first { it.id == "both" }.categoryIds)
+    }
+
+    private fun group(id: String, type: CategoryType = CategoryType.EXPENSE) = CategoryGroup(id, id, type, 0, "health", 0)
+    private fun cat(id: String, type: CategoryType = CategoryType.EXPENSE, group: String? = null) =
+        Category(id, id, type, 0, "tag", 0, group)
+
+    @Test fun saveGroupMovesCategoryFromOtherGroupAndUngroupsLeavers() = runBlocking {
+        listOf("internet", "luz", "cinema").forEach { repo.saveCategory(cat(it)) }
+        repo.saveCategory(cat("salario", CategoryType.INCOME))
+        repo.saveGroup(group("lazer"), setOf("internet", "cinema"))
+        repo.saveGroup(group("contas"), setOf("internet", "luz", "salario"))
+        var byId = repo.data.first().categories.associate { it.id to it.groupId }
+        assertEquals("contas", byId["internet"])
+        assertEquals("contas", byId["luz"])
+        assertEquals("lazer", byId["cinema"])
+        assertNull("categoria de outro tipo não entra no grupo", byId["salario"])
+        repo.saveGroup(group("contas"), setOf("luz"))
+        byId = repo.data.first().categories.associate { it.id to it.groupId }
+        assertNull(byId["internet"])
+        assertEquals("contas", byId["luz"])
+    }
+
+    @Test fun deletingGroupKeepsCategoriesAndTransactions() = runBlocking {
+        repo.saveAccount(acc("A"))
+        listOf("plano", "psi", "seguro").forEach { repo.saveCategory(cat(it)) }
+        repo.saveGroup(group("saude"), setOf("plano", "psi", "seguro"))
+        repo.saveTransaction(tx("t1", "A", cat = "psi"))
+        repo.saveBudget(Budget("b", "Psi", 100, false, setOf("psi"), 0))
+        repo.deleteGroup("saude")
+        val data = repo.data.first()
+        assertTrue(data.groups.isEmpty())
+        assertEquals(3, data.categories.size)
+        assertTrue(data.categories.all { it.groupId == null })
+        assertEquals("psi", data.transactions.single().categoryId)
+        assertEquals(setOf("psi"), data.budgets.single().categoryIds)
+    }
+
+    @Test fun groupStaysWhenItsLastCategoryIsDeleted() = runBlocking {
+        repo.saveCategory(cat("vet"))
+        repo.saveGroup(group("pets"), setOf("vet"))
+        repo.deleteCategory("vet")
+        val data = repo.data.first()
+        assertEquals(listOf("pets"), data.groups.map { it.id })
+        assertTrue(data.categories.isEmpty())
+    }
+
+    @Test fun changingCategoryTypeDropsItsGroup() = runBlocking {
+        repo.saveCategory(cat("x"))
+        repo.saveGroup(group("saude"), setOf("x"))
+        repo.saveCategory(cat("x", CategoryType.INCOME, group = "saude"))
+        assertNull(repo.data.first().categories.single().groupId)
+        assertEquals(1, repo.nextGroupOrder())
+    }
+
+    @Test fun changingGroupTypeDropsMembersOfTheOldType() = runBlocking {
+        repo.saveCategory(cat("x"))
+        repo.saveGroup(group("g"), setOf("x"))
+        repo.saveGroup(group("g", CategoryType.INCOME), setOf("x"))
+        assertNull(repo.data.first().categories.single().groupId)
     }
 }

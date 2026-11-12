@@ -61,6 +61,7 @@ import com.viniciusrio.tostao.domain.Planned
 import com.viniciusrio.tostao.domain.PlannedRule
 import com.viniciusrio.tostao.domain.Recurrence
 import com.viniciusrio.tostao.domain.RecurrenceUnit
+import com.viniciusrio.tostao.domain.TransactionQueries
 import com.viniciusrio.tostao.domain.TxType
 import com.viniciusrio.tostao.ui.MainViewModel
 import com.viniciusrio.tostao.ui.Route
@@ -68,6 +69,7 @@ import com.viniciusrio.tostao.ui.components.AccountChips
 import com.viniciusrio.tostao.ui.components.AmountField
 import com.viniciusrio.tostao.ui.components.BackTopBar
 import com.viniciusrio.tostao.ui.components.CategoryChips
+import com.viniciusrio.tostao.ui.components.GroupedCategoryChips
 import com.viniciusrio.tostao.ui.components.ConfirmDialog
 import com.viniciusrio.tostao.ui.components.EmptyState
 import com.viniciusrio.tostao.ui.components.IconBadge
@@ -253,7 +255,13 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
     var createdCategories by rememberSaveable { mutableStateOf(listOf<String>()) }
 
     val catType = if (type == TxType.INCOME) CategoryType.INCOME else CategoryType.EXPENSE
-    val cats = data.categories.filter { it.type == catType }
+    // Sem grupos, a ordem é a de sempre (a da categoria); com grupos, a mesma regra do formulário
+    // de transação, com as recentes primeiro.
+    val sections = remember(data, catType) {
+        val grouped = data.groups.any { it.type == catType }
+        TransactionQueries.categorySections(data, catType, if (grouped) TransactionQueries.recentCategoryIds(data) else emptyList())
+    }
+    val cats = sections.flatMap { it.categories }
     val effectiveCategory = categoryId?.takeIf { c ->
         cats.any { it.id == c } || "${catType.name}:$c" in createdCategories
     }
@@ -277,7 +285,7 @@ fun RuleFormScreen(vm: MainViewModel, data: FinanceData, id: String?) {
             SectionHeader("Conta")
             AccountChips(data.accounts, accountId, { accountId = it })
             SectionHeader("Categoria")
-            CategoryChips(cats, setOfNotNull(effectiveCategory), onAdd = { addingCategory = true }) { c ->
+            GroupedCategoryChips(sections, setOfNotNull(effectiveCategory), onAdd = { addingCategory = true }) { c ->
                 categoryId = if (effectiveCategory == c) null else c
             }
             SectionHeader("Quando")

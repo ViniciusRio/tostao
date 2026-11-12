@@ -1,11 +1,17 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.viniciusrio.tostao.domain.backup
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 /*
- * DTOs do arquivo de backup, formato 1. Ficam separados das entidades do Room e das classes de
- * domínio de propósito: mudar o banco ou o domínio não pode mudar o formato sem querer.
+ * DTOs do arquivo de backup, formato 2 (o 1 não tinha grupos). Ficam separados das entidades do
+ * Room e das classes de domínio de propósito: mudar o banco ou o domínio não pode mudar o formato sem querer.
  * Campos anuláveis têm padrão null para tolerar ausência; os demais são obrigatórios.
+ * Os campos de grupo são omitidos quando estão no padrão: sem grupos, o JSON (e a impressão
+ * digital) é igual ao do formato 1.
  */
 
 @Serializable
@@ -23,6 +29,17 @@ data class BackupData(
     val transactions: List<TransactionDto>,
     val plannedRules: List<PlannedRuleDto>,
     val budgets: List<BudgetDto>,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val categoryGroups: List<CategoryGroupDto> = emptyList(),
+)
+
+@Serializable
+data class CategoryGroupDto(
+    val id: String,
+    val name: String,
+    val type: String,
+    val colorArgb: Long,
+    val icon: String,
+    val order: Int,
 )
 
 @Serializable
@@ -44,6 +61,7 @@ data class CategoryDto(
     val colorArgb: Long,
     val icon: String,
     val order: Int,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val groupId: String? = null,
 )
 
 @Serializable

@@ -53,6 +53,7 @@ import com.viniciusrio.tostao.domain.TxType
 import com.viniciusrio.tostao.ui.screens.AccountFormScreen
 import com.viniciusrio.tostao.ui.screens.AccountsScreen
 import com.viniciusrio.tostao.ui.screens.BudgetFormScreen
+import com.viniciusrio.tostao.ui.screens.CategoryGroupFormScreen
 import com.viniciusrio.tostao.ui.screens.CategoriesScreen
 import com.viniciusrio.tostao.ui.screens.CategoryTransactionsScreen
 import com.viniciusrio.tostao.ui.screens.CategoryFormScreen
@@ -148,6 +149,7 @@ fun FinanceRoot(vm: MainViewModel) {
                     is Route.AccountForm -> AccountFormScreen(vm, d, route.id)
                     Route.Categories -> CategoriesScreen(vm, d)
                     is Route.CategoryForm -> CategoryFormScreen(vm, d, route.id, route.type)
+                    is Route.GroupForm -> CategoryGroupFormScreen(vm, d, route.id, route.type)
                     is Route.RuleForm -> RuleFormScreen(vm, d, route.id)
                     is Route.BudgetForm -> BudgetFormScreen(vm, d, route.id)
                     is Route.CategoryTransactions -> CategoryTransactionsScreen(vm, d, route)

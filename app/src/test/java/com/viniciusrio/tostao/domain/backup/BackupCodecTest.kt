@@ -1,6 +1,7 @@
 package com.viniciusrio.tostao.domain.backup
 
 import com.viniciusrio.tostao.domain.Budget
+import com.viniciusrio.tostao.domain.CategoryGroup
 import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.Money
@@ -47,9 +48,17 @@ class BackupCodecTest {
         )
     }
 
+    /** Amostra com ids fixos (as fábricas de teste usam um contador), para valores de referência. */
+    private fun stableSample() = sample().let { d ->
+        d.copy(
+            transactions = d.transactions.mapIndexed { i, t -> t.copy(id = "tx$i") },
+            rules = d.rules.mapIndexed { i, r -> r.copy(id = "rule$i") },
+        )
+    }
+
     private fun FinanceData.normalized() = FinanceData(
         accounts.sortedBy { it.id }, categories.sortedBy { it.id }, transactions.sortedBy { it.id },
-        rules.sortedBy { it.id }, budgets.sortedBy { it.id },
+        rules.sortedBy { it.id }, budgets.sortedBy { it.id }, groups.sortedBy { it.id },
     )
 
     private fun valid(text: String) = BackupCodec.decode(text) as BackupResult.Valid
@@ -75,7 +84,7 @@ class BackupCodecTest {
         val d = sample()
         val json = BackupCodec.encode(d, created)
         assertTrue(json.contains("\"app\": \"tostao\""))
-        assertTrue(json.contains("\"formatVersion\": 1"))
+        assertTrue(json.contains("\"formatVersion\": 2"))
         val shuffled = d.let { it.copy(accounts = it.accounts.reversed()) }
         assertEquals(json, BackupCodec.encode(shuffled, created))
     }
@@ -101,7 +110,7 @@ class BackupCodecTest {
     }
 
     @Test fun rejectsNewerVersion() {
-        assertEquals(BackupCodec.MSG_NEWER, invalid(tampered(from = "\"formatVersion\": 1", to = "\"formatVersion\": 2")))
+        assertEquals(BackupCodec.MSG_NEWER, invalid(tampered(from = "\"formatVersion\": 2", to = "\"formatVersion\": 3")))
     }
 
     @Test fun rejectsTruncatedOrMistyped() {
@@ -112,7 +121,7 @@ class BackupCodecTest {
     }
 
     @Test fun ignoresUnknownKeys() {
-        valid(tampered(from = "\"formatVersion\": 1,", to = "\"formatVersion\": 1, \"extra\": true,"))
+        valid(tampered(from = "\"formatVersion\": 2,", to = "\"formatVersion\": 2, \"extra\": true,"))
     }
 
     @Test fun rejectsUnknownEnum() {
@@ -188,5 +197,96 @@ class BackupCodecTest {
         assertTrue(invalid(with(rule(LocalDate.of(1800, 1, 1), RecurrenceUnit.DAY))).contains("data"))
         valid(with(rule(start, RecurrenceUnit.DAY, consumed = 200_000)))
         assertTrue(invalid(with(rule(start, RecurrenceUnit.DAY, consumed = 200_001))).contains("progresso"))
+    }
+
+    // ---- Grupos (formato 2) ----
+
+    private fun withGroups(): FinanceData {
+        val d = sample()
+        val saude = CategoryGroup("g-saude", "Saúde", CategoryType.EXPENSE, 0xFF00897B, "health", 0)
+        val renda = CategoryGroup("g-renda", "Renda", CategoryType.INCOME, 0xFF43A047, "work", 1)
+        val vazio = CategoryGroup("g-pets", "Pets", CategoryType.EXPENSE, 0xFF8D6E63, "pet", 2)
+        val cats = d.categories.map {
+            when (it.id) {
+                "food" -> it.copy(groupId = "g-saude")
+                "salary" -> it.copy(groupId = "g-renda")
+                else -> it
+            }
+        } + category("psi").copy(name = "Psicólogo", groupId = "g-saude") + category("lazer").copy(name = "Lazer")
+        return d.copy(categories = cats, groups = listOf(saude, renda, vazio))
+    }
+
+    @Test fun roundTripKeepsGroups() {
+        val d = withGroups()
+        val back = valid(BackupCodec.encode(d, created))
+        assertEquals(d.normalized(), back.data.normalized())
+        assertEquals(3, back.groups)
+        assertEquals(setOf("food", "psi"), back.data.categories.filter { it.groupId == "g-saude" }.map { it.id }.toSet())
+    }
+
+    /** O JSON do formato 1, como a versão anterior do app gerava (sem nenhum campo de grupo). */
+    private fun asVersion1(json: String) = json.replace("\"formatVersion\": 2", "\"formatVersion\": 1")
+
+    @Test fun version1WithoutGroupsIsRestored() {
+        val d = sample()
+        val json = asVersion1(BackupCodec.encode(d, created))
+        assertTrue(!json.contains("groupId") && !json.contains("categoryGroups"))
+        val back = valid(json)
+        assertEquals(d.normalized(), back.data.normalized())
+        assertTrue(back.data.groups.isEmpty())
+    }
+
+    @Test fun version1IgnoresGroupFields() {
+        val back = valid(asVersion1(BackupCodec.encode(withGroups(), created)))
+        assertTrue(back.data.groups.isEmpty())
+        assertTrue(back.data.categories.all { it.groupId == null })
+        assertEquals(0, back.groups)
+    }
+
+    @Test fun version1IgnoresMalformedGroupFields() {
+        // Num v1, os campos de grupo são ignorados mesmo com tipo errado (não recusam o arquivo).
+        val json = asVersion1(BackupCodec.encode(sample(), created))
+            .replaceFirst("\"budgets\":", "\"categoryGroups\": \"x\",\n    \"budgets\":")
+            .replaceFirst("\"name\": \"Alimentação\",", "\"name\": \"Alimentação\", \"groupId\": 42,")
+        assertTrue(json.contains("\"categoryGroups\": \"x\"") && json.contains("\"groupId\": 42"))
+        val back = valid(json)
+        assertTrue(back.data.groups.isEmpty())
+        assertTrue(back.data.categories.all { it.groupId == null })
+        // No formato 2 os mesmos campos são lidos e um tipo errado recusa o arquivo.
+        assertTrue(invalid(json.replace("\"formatVersion\": 1", "\"formatVersion\": 2")).startsWith(BackupCodec.MSG_CORRUPT))
+    }
+
+    @Test fun version1ThenGroupsThenVersion2KeepsIdsAndLinks() {
+        val original = sample()
+        val v1 = valid(asVersion1(BackupCodec.encode(original, created))).data
+        val grouped = v1.copy(
+            groups = listOf(CategoryGroup("g", "Casa", CategoryType.EXPENSE, 0, "home", 0)),
+            categories = v1.categories.map { if (it.id == "food") it.copy(groupId = "g") else it },
+        )
+        val back = valid(BackupCodec.encode(grouped, created)).data
+        assertEquals(grouped.normalized(), back.normalized())
+        assertEquals(original.transactions.map { it.id to it.categoryId }, back.transactions.map { it.id to it.categoryId })
+        assertEquals(original.budgets.sortedBy { it.id }, back.budgets.sortedBy { it.id })
+    }
+
+    @Test fun fingerprintWithoutGroupsIsTheSameAsFormat1() {
+        // Valor calculado com o código do formato 1 (main antes deste change) para a mesma amostra:
+        // atualizar o app sem mudar dados não pode disparar o lembrete de backup.
+        assertEquals("d969311af6305cbe91f643b482eb6929", BackupCodec.fingerprint(stableSample()))
+        assertNotEquals(BackupCodec.fingerprint(stableSample()), BackupCodec.fingerprint(withGroups()))
+    }
+
+    @Test fun rejectsInvalidGroups() {
+        val d = withGroups()
+        val dupName = d.copy(groups = d.groups + CategoryGroup("g-2", "saúde ", CategoryType.EXPENSE, 0, "tag", 9))
+        assertTrue(invalid(BackupCodec.encode(dupName, created)).contains("Grupo 4: nome repetido"))
+        val missing = d.copy(categories = d.categories.map { if (it.id == "lazer") it.copy(groupId = "nao-existe") else it })
+        assertTrue(invalid(BackupCodec.encode(missing, created)).contains("grupo inexistente"))
+        val otherType = d.copy(categories = d.categories.map { if (it.id == "salary") it.copy(groupId = "g-saude") else it })
+        assertTrue(invalid(BackupCodec.encode(otherType, created)).contains("grupo de outro tipo"))
+        // Mesmo nome em tipos diferentes é permitido, e o grupo pode repetir o nome de uma categoria.
+        val sameNameOtherType = d.copy(groups = d.groups + CategoryGroup("g-3", "Saúde", CategoryType.INCOME, 0, "tag", 9))
+        valid(BackupCodec.encode(sameNameOtherType, created))
+        valid(BackupCodec.encode(d.copy(groups = d.groups + CategoryGroup("g-4", "Alimentação", CategoryType.EXPENSE, 0, "tag", 9)), created))
     }
 }

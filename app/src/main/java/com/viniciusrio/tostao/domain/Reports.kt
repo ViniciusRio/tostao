@@ -5,6 +5,21 @@ import java.time.ZoneId
 
 data class CategorySlice(val category: Category?, val totalCents: Long, val percent: Int)
 
+/**
+ * Item da visão "Por grupo": um grupo ([key] = [CategoryScope.Group]), uma categoria sem grupo
+ * ([CategoryScope.Category]) ou "Sem categoria" ([CategoryScope.None]). [children] é o
+ * detalhamento do grupo por categoria, com o percentual dentro do grupo; vazio nos demais.
+ */
+data class GroupSlice(
+    val key: CategoryScope,
+    val label: String,
+    val colorArgb: Long,
+    val icon: String,
+    val totalCents: Long,
+    val percent: Int,
+    val children: List<CategorySlice>,
+)
+
 data class MonthReport(
     val incomeCents: Long,
     val expenseCents: Long,
@@ -12,6 +27,8 @@ data class MonthReport(
     val expenseByCategory: List<CategorySlice>,
     val incomeByCategory: List<CategorySlice>,
     val previousExpenseCents: Long,
+    val expenseByGroup: List<GroupSlice> = emptyList(),
+    val incomeByGroup: List<GroupSlice> = emptyList(),
 ) {
     val resultCents: Long get() = incomeCents - expenseCents
     val expenseDeltaCents: Long get() = expenseCents - previousExpenseCents
@@ -51,19 +68,46 @@ object Reports {
             incomeCents = income.sumOf { it.amountCents },
             expenseCents = expense.sumOf { it.amountCents },
             transactionCount = txs.size,
-            expenseByCategory = slices(expense, data),
-            incomeByCategory = slices(income, data),
+            expenseByCategory = TransactionQueries.categorySlices(expense, data),
+            incomeByCategory = TransactionQueries.categorySlices(income, data),
             previousExpenseCents = prevExpense,
+            expenseByGroup = groupSlices(expense, data, CategoryType.EXPENSE),
+            incomeByGroup = groupSlices(income, data, CategoryType.INCOME),
         )
     }
 
-    private fun slices(txs: List<Transaction>, data: FinanceData): List<CategorySlice> {
+    const val UNCATEGORIZED_COLOR = 0xFF7D7D85
+    const val UNCATEGORIZED_ICON = "dots"
+
+    /** Chave do item da visão por grupo para uma transação do relatório do [type]. */
+    fun groupKey(t: Transaction, data: FinanceData, type: CategoryType): CategoryScope {
+        val cat = t.categoryId?.let(data.categoryById::get) ?: return CategoryScope.None
+        val group = data.groupOf(cat)?.takeIf { it.type == type }
+        return if (group != null) CategoryScope.Group(group.id) else CategoryScope.Category(cat.id)
+    }
+
+    /**
+     * Visão "Por grupo": cada grupo com movimento vira um item com a soma das suas categorias;
+     * categorias sem grupo e "Sem categoria" continuam como itens próprios. Uma transação cujo tipo
+     * difere do tipo do grupo da sua categoria entra como item da categoria. Ordem decrescente.
+     */
+    fun groupSlices(txs: List<Transaction>, data: FinanceData, type: CategoryType): List<GroupSlice> {
         val total = txs.sumOf { it.amountCents }
         if (total == 0L) return emptyList()
-        val sums = txs.groupBy { it.categoryId?.let(data.categoryById::get) }
-            .map { (cat, list) -> cat to list.sumOf { it.amountCents } }
-            .sortedByDescending { it.second }
-        val pct = Charts.percents(sums.map { it.second })
-        return sums.mapIndexed { i, (cat, sum) -> CategorySlice(cat, sum, pct[i]) }
+        val byKey = txs.groupBy { groupKey(it, data, type) }
+            .map { (key, list) -> Triple(key, list, list.sumOf { it.amountCents }) }
+            .sortedByDescending { it.third }
+        val pct = Charts.percents(byKey.map { it.third })
+        return byKey.mapIndexed { i, (key, list, sum) ->
+            when (key) {
+                is CategoryScope.Group -> data.groupById.getValue(key.id).let { g ->
+                    GroupSlice(key, g.name, g.colorArgb, g.icon, sum, pct[i], TransactionQueries.categorySlices(list, data))
+                }
+                is CategoryScope.Category -> data.categoryById.getValue(key.id).let { c ->
+                    GroupSlice(key, c.name, c.colorArgb, c.icon, sum, pct[i], emptyList())
+                }
+                else -> GroupSlice(CategoryScope.None, "Sem categoria", UNCATEGORIZED_COLOR, UNCATEGORIZED_ICON, sum, pct[i], emptyList())
+            }
+        }
     }
 }

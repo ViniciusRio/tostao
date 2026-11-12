@@ -3,6 +3,7 @@ package com.viniciusrio.tostao.domain.backup
 import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Budget
 import com.viniciusrio.tostao.domain.Category
+import com.viniciusrio.tostao.domain.CategoryGroup
 import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.Limits
@@ -14,6 +15,7 @@ import com.viniciusrio.tostao.domain.Transaction
 import com.viniciusrio.tostao.domain.TxType
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
@@ -29,6 +31,7 @@ sealed interface BackupResult {
         val transactions get() = data.transactions.size
         val rules get() = data.rules.size
         val budgets get() = data.budgets.size
+        val groups get() = data.groups.size
     }
 
     data class Invalid(val reason: String) : BackupResult
@@ -36,7 +39,7 @@ sealed interface BackupResult {
 
 object BackupCodec {
     const val APP_ID = "tostao"
-    const val FORMAT_VERSION = 1
+    const val FORMAT_VERSION = 2
 
     /** Teto de tamanho, igual na leitura e na geração, para o app nunca gerar um backup que recusaria. */
     const val MAX_BYTES = 50L * 1024 * 1024
@@ -80,9 +83,10 @@ object BackupCodec {
         if (version > FORMAT_VERSION) return BackupResult.Invalid(MSG_NEWER)
         if (version < 1) return BackupResult.Invalid(MSG_CORRUPT)
 
-        // 2. Decodificação dos tipos.
+        // 2. Decodificação dos tipos. O formato 1 não tinha grupos: os campos de grupo de um arquivo
+        // v1 são removidos antes de decodificar, então nem um valor de tipo errado neles o recusa.
         val file = try {
-            reader.decodeFromJsonElement(BackupFile.serializer(), root)
+            reader.decodeFromJsonElement(BackupFile.serializer(), if (version < 2) withoutGroups(root) else root)
         } catch (_: SerializationException) {
             return BackupResult.Invalid(MSG_CORRUPT)
         } catch (_: IllegalArgumentException) {
@@ -100,6 +104,16 @@ object BackupCodec {
         } catch (e: InvalidBackup) {
             BackupResult.Invalid("$MSG_CORRUPT ${e.message}")
         }
+    }
+
+    /** Cópia do JSON sem `data.categoryGroups` e sem `groupId` nas categorias (leitura do formato 1). */
+    private fun withoutGroups(root: JsonObject): JsonObject {
+        val data = root["data"] as? JsonObject ?: return root
+        val categories = (data["categories"] as? JsonArray)?.let { arr ->
+            JsonArray(arr.map { c -> if (c is JsonObject) JsonObject(c - "groupId") else c })
+        }
+        val cleaned = data - "categoryGroups" + (if (categories != null) mapOf("categories" to categories) else emptyMap())
+        return JsonObject(root + ("data" to JsonObject(cleaned)))
     }
 
     private class InvalidBackup(message: String) : Exception(message)
@@ -136,6 +150,16 @@ object BackupCodec {
             uniqueIds(d.transactions, "Transação") { it.id }
             uniqueIds(d.plannedRules, "Planejamento") { it.id }
             uniqueIds(d.budgets, "Orçamento") { it.id }
+            uniqueIds(d.categoryGroups, "Grupo") { it.id }
+
+            val groupNames = HashSet<Pair<CategoryType, String>>()
+            val groups = d.categoryGroups.mapIndexed { i, g ->
+                name(g.name, Limits.GROUP_NAME, "Grupo", i)
+                val type = CategoryType.entries.firstOrNull { it.name == g.type } ?: fail("Grupo", i, "tipo desconhecido")
+                if (!groupNames.add(type to g.name.trim().lowercase())) fail("Grupo", i, "nome repetido")
+                CategoryGroup(g.id, g.name, type, g.colorArgb, g.icon, g.order)
+            }
+            val groupType = groups.associate { it.id to it.type }
 
             val accountNames = HashSet<String>()
             val accounts = d.accounts.mapIndexed { i, a ->
@@ -151,7 +175,11 @@ object BackupCodec {
                 name(c.name, Limits.CATEGORY_NAME, "Categoria", i)
                 val type = CategoryType.entries.firstOrNull { it.name == c.type } ?: fail("Categoria", i, "tipo desconhecido")
                 if (!categoryNames.add(type to c.name.trim().lowercase())) fail("Categoria", i, "nome repetido")
-                Category(c.id, c.name, type, c.colorArgb, c.icon, c.order)
+                if (c.groupId != null) {
+                    val gt = groupType[c.groupId] ?: fail("Categoria", i, "grupo inexistente")
+                    if (gt != type) fail("Categoria", i, "grupo de outro tipo")
+                }
+                Category(c.id, c.name, type, c.colorArgb, c.icon, c.order, c.groupId)
             }
             val categoryType = categories.associate { it.id to it.type }
 
@@ -232,7 +260,7 @@ object BackupCodec {
                 Budget(b.id, b.name, b.limitCents, b.allExpenses, b.categoryIds.toSet(), b.order)
             }
 
-            return FinanceData(accounts, categories, transactions, rules, budgets)
+            return FinanceData(accounts, categories, transactions, rules, budgets, groups)
         }
     }
 
@@ -241,7 +269,7 @@ object BackupCodec {
             AccountDto(it.id, it.name, it.colorArgb, it.icon, it.initialBalanceCents, it.includeInTotal, it.order)
         },
         categories = data.categories.sortedBy { it.id }.map {
-            CategoryDto(it.id, it.name, it.type.name, it.colorArgb, it.icon, it.order)
+            CategoryDto(it.id, it.name, it.type.name, it.colorArgb, it.icon, it.order, it.groupId)
         },
         // No arquivo, a ordem de inserção (vinda do banco) é preservada: ela é o desempate de
         // horários iguais na lista e precisa sobreviver à restauração. A impressão digital ignora ordem.
@@ -259,6 +287,9 @@ object BackupCodec {
         },
         budgets = data.budgets.sortedBy { it.id }.map {
             BudgetDto(it.id, it.name, it.limitCents, it.allExpenses, it.categoryIds.sorted(), it.order)
+        },
+        categoryGroups = data.groups.sortedBy { it.id }.map {
+            CategoryGroupDto(it.id, it.name, it.type.name, it.colorArgb, it.icon, it.order)
         },
     )
 }

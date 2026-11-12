@@ -7,6 +7,7 @@ import java.time.YearMonth
 
 class ChartsTest {
     private fun slice(name: String, cents: Long) = CategorySlice(category(name), cents, 0)
+    private fun pie(slices: List<CategorySlice>) = Charts.pie(Charts.categoryItems(slices))
 
     @Test fun percentsAlwaysSumToHundred() {
         assertEquals(listOf(34, 33, 33), Charts.percents(listOf(1, 1, 1)))
@@ -15,7 +16,7 @@ class ChartsTest {
     }
 
     @Test fun groupsTwoOrMoreSmallCategoriesAsOthers() {
-        val pie = Charts.pie(listOf(slice("Mercado", 60000), slice("Lazer", 38000), slice("Saúde", 1000), slice("Educação", 1000)))
+        val pie = pie(listOf(slice("Mercado", 60000), slice("Lazer", 38000), slice("Saúde", 1000), slice("Educação", 1000)))
         assertEquals(listOf("Mercado", "Lazer", "Outras"), pie.map { it.label })
         assertEquals(listOf(60, 38, 2), pie.map { it.percent })
         assertEquals(2000L, pie.last().cents)
@@ -24,27 +25,27 @@ class ChartsTest {
 
     @Test fun othersTakesItsPlaceInDescendingOrder() {
         val input = listOf(slice("A", 4500)) + (1..4).map { slice("M$it", 1000) } + (1..15).map { slice("p$it", 100) }
-        val pie = Charts.pie(input)
+        val pie = pie(input)
         assertEquals(listOf("A", "Outras", "M1", "M2", "M3", "M4"), pie.map { it.label })
         assertEquals(100, pie.sumOf { it.percent })
     }
 
     @Test fun singleSmallCategoryStaysOnItsOwn() {
-        val pie = Charts.pie(listOf(slice("Mercado", 9800), slice("Saúde", 200)))
+        val pie = pie(listOf(slice("Mercado", 9800), slice("Saúde", 200)))
         assertEquals(listOf("Mercado", "Saúde"), pie.map { it.label })
     }
 
     @Test fun uncategorizedHasLabel() {
-        val pie = Charts.pie(listOf(CategorySlice(null, 100, 100)))
+        val pie = pie(listOf(CategorySlice(null, 100, 100)))
         assertEquals("Sem categoria", pie.single().label)
     }
 
     @Test fun emptyWhenNoData() {
-        assertTrue(Charts.pie(emptyList()).isEmpty())
+        assertTrue(pie(emptyList()).isEmpty())
     }
 
     @Test fun describesTopThree() {
-        val pie = Charts.pie(listOf(slice("Mercado", 60000), slice("Lazer", 38000), slice("Saúde", 1000), slice("Educação", 1000)))
+        val pie = pie(listOf(slice("Mercado", 60000), slice("Lazer", 38000), slice("Saúde", 1000), slice("Educação", 1000)))
         assertEquals("Gráfico de despesas: Mercado 60%, Lazer 38%, Outras 2%", Charts.describe("despesas", pie))
     }
 
@@ -87,5 +88,33 @@ class ChartsTest {
         assertEquals(500L, btg.last().incomeCents)
         assertEquals(Charts.trend(data, last, ZONE, now), Charts.trend(data, last, ZONE, now, accountId = null))
         assertEquals(400L, Charts.trend(data, last, ZONE, now).first { it.month.monthValue == 8 }.expenseCents)
+    }
+
+    // ---- Pizza por grupo e linhas destacadas ----
+
+    @Test fun groupPieHighlightsGroupAndOthersRows() {
+        val items = listOf(
+            ChartItem(CategoryScope.Group("saude"), "Saúde", 80_000, 1),
+            ChartItem(CategoryScope.Category("lazer"), "Lazer", 17_000, 2),
+            ChartItem(CategoryScope.Group("pets"), "Pets", 2_000, 3),
+            ChartItem(CategoryScope.Category("edu"), "Educação", 1_000, 4),
+        )
+        val pie = Charts.pie(items)
+        assertEquals(listOf("Saúde", "Lazer", "Outras"), pie.map { it.label })
+        assertEquals(setOf(CategoryScope.Group("saude")), Charts.keysOf(pie, 0))
+        assertEquals(setOf(CategoryScope.Group("pets"), CategoryScope.Category("edu")), Charts.keysOf(pie, 2))
+        assertEquals(3_000L, pie[2].cents)
+        assertTrue(Charts.keysOf(pie, null).isEmpty())
+        assertTrue(Charts.keysOf(pie, 9).isEmpty())
+    }
+
+    @Test fun categoryItemsUseCategoryAndNoneKeys() {
+        val items = Charts.categoryItems(listOf(slice("Mercado", 100), CategorySlice(null, 50, 0)))
+        assertEquals(listOf(CategoryScope.Category("Mercado"), CategoryScope.None), items.map { it.key })
+        val g = GroupScenario
+        val r = Reports.month(g.data, YearMonth.of(2026, 11), ZONE, g.now)
+        val pie = Charts.pie(Charts.groupItems(r.expenseByGroup))
+        assertEquals(listOf("Saúde", "Lazer", "Sem categoria"), pie.map { it.label })
+        assertEquals(listOf(79, 20, 1), pie.map { it.percent })
     }
 }

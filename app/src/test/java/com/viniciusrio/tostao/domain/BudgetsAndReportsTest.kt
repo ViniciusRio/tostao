@@ -2,6 +2,7 @@ package com.viniciusrio.tostao.domain
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.YearMonth
 
@@ -124,5 +125,46 @@ class BudgetsAndReportsTest {
         assertEquals(0L, r.incomeCents)
         assertEquals(0, r.transactionCount)
         assertEquals(emptyList<CategorySlice>(), r.expenseByCategory)
+    }
+
+    // ---- Visão por grupo ----
+
+    @Test fun groupViewSumsCategoriesOfTheGroup() {
+        val g = GroupScenario
+        val r = Reports.month(g.data, YearMonth.of(2026, 11), ZONE, g.now)
+        assertEquals(
+            listOf(CategoryScope.Group("saude") to 80_000L, CategoryScope.Category("lazer") to 20_000L, CategoryScope.None to 1_000L),
+            r.expenseByGroup.map { it.key to it.totalCents },
+        )
+        val saude = r.expenseByGroup.first()
+        assertEquals("Saúde", saude.label)
+        assertEquals(listOf("plano" to 63, "psi" to 37), saude.children.map { it.category!!.id to it.percent })
+        // Pets não teve despesas: fica fora; Seguro de vida não aparece no detalhamento.
+        assertTrue(r.expenseByGroup.none { it.key == CategoryScope.Group("pets") })
+        assertTrue(saude.children.none { it.category?.id == "seguro" })
+        assertEquals("Sem categoria", r.expenseByGroup.last().label)
+        // O total por grupo é o mesmo do relatório por categoria.
+        assertEquals(r.expenseCents, r.expenseByGroup.sumOf { it.totalCents })
+        assertEquals(saude.totalCents, saude.children.sumOf { it.totalCents })
+    }
+
+    @Test fun scenarioOfTheSpecGives80And20() {
+        val g = GroupScenario
+        val data = g.data.copy(transactions = listOf(g.plano, g.psi, g.lazer))
+        val r = Reports.month(data, YearMonth.of(2026, 11), ZONE, g.now)
+        assertEquals(listOf(80, 20), r.expenseByGroup.map { it.percent })
+    }
+
+    @Test fun incomeInGroupedExpenseCategoryIsItsOwnItem() {
+        val g = GroupScenario
+        val r = Reports.month(g.data, YearMonth.of(2026, 11), ZONE, g.now)
+        assertEquals(listOf(CategoryScope.Category("psi") to 5_000L), r.incomeByGroup.map { it.key to it.totalCents })
+        assertEquals("Psicólogo", r.incomeByGroup.single().label)
+    }
+
+    @Test fun groupViewWithAccount() {
+        val g = GroupScenario
+        val r = Reports.month(g.data, YearMonth.of(2026, 11), ZONE, g.now, accountId = "pix")
+        assertEquals(50_000L, r.expenseByGroup.first { it.key == CategoryScope.Group("saude") }.totalCents)
     }
 }

@@ -23,8 +23,14 @@ android {
         minSdk = 26
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
+    }
+
+    // O debug é um app separado: instala ao lado da release (que tem dados reais) e os testes
+    // instrumentados rodam nele sem tocar no banco da release.
+    buildTypes.getByName("debug") {
+        applicationIdSuffix = ".debug"
     }
 
     // Assinatura de release lida de fora do repositório (keystore local, nunca commitada).
@@ -90,4 +96,5 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.room.testing)
 }

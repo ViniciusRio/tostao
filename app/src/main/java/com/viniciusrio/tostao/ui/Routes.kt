@@ -16,11 +16,16 @@ sealed interface Route {
     data class AccountForm(val id: String? = null) : Route
     data object Categories : Route
     data class CategoryForm(val id: String? = null, val type: CategoryType = CategoryType.EXPENSE) : Route
+    data class GroupForm(val id: String? = null, val type: CategoryType = CategoryType.EXPENSE) : Route
     data class RuleForm(val id: String? = null) : Route
     data class BudgetForm(val id: String? = null) : Route
-    /** Transações de uma categoria no mês e tipo do relatório. [categoryId] null = "Sem categoria"; [accountId] null = todas. */
+    /**
+     * Transações de um item do relatório no mês e tipo do relatório. [scope] é um
+     * `CategoryScope` serializado (`none`, `cat:<id>` ou `grp:<id>`), lido com `parseRoute`;
+     * [accountId] null = todas as contas.
+     */
     data class CategoryTransactions(
-        val categoryId: String?,
+        val scope: String,
         val type: CategoryType,
         val month: String, // YearMonth.toString()
         val accountId: String? = null,

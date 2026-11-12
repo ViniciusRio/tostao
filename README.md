@@ -9,12 +9,13 @@ App Android de finanças pessoais, **local e offline**, em Kotlin + Jetpack Comp
 ## O que tem
 
 - **Contas** com saldo inicial (pode ser negativo), cor, ícone, inclusão no saldo total, reordenação e **ajuste de saldo** (vira transação marcada, fora de relatórios).
-- **Transações**: receita, despesa e transferência; edição; exclusão com **Desfazer**; lista por mês agrupada por dia ("Hoje", "Ontem"); filtros por tipo e conta; **busca sem acento** em todos os meses.
+- **Transações**: receita, despesa e transferência; edição; exclusão com **Desfazer**; lista por mês agrupada por dia ("Hoje", "Ontem"); filtros por tipo, conta e **categoria ou grupo** (com o total do mês e, no grupo, o detalhamento por categoria); **busca sem acento** em todos os meses, também pelo nome do grupo. No campo Valor dá para **somar parcelas** (`12,50+8,30+15`, com um botão "+" ao lado): o app mostra o total e grava uma transação só.
+- **Grupos de categorias** (opcionais): junte categorias afins num "guarda-chuva" (ex.: Saúde = Plano de saúde + Psicólogo) para ver o total do grupo sem perder a visão por categoria. Sem grupos, nada muda.
 - **Planejados**: contas fixas e recorrências (dias/semanas/meses/anos, com data final). Só a **próxima ocorrência** aparece, sem poluir o extrato. Pagar/Pular com Desfazer.
 - **Orçamentos** mensais por categoria ou "todas as despesas", com estados normal/atenção/excedido em texto.
-- **Relatórios** do mês sem precisar de filtro: totais, resultado, **gráfico de pizza por categoria** (toque para ver valor e percentual), **evolução dos últimos 6 meses** em barras, ranking por categoria e comparação com o mês anterior. Um **filtro por conta** ("Todas as contas" ou uma conta) recorta o relatório inteiro, incluindo gráficos e as transações da categoria; transferências e ajustes continuam fora.
+- **Relatórios** do mês sem precisar de filtro: totais, resultado, **gráfico de pizza por categoria** (toque para ver valor e percentual), **evolução dos últimos 6 meses** em barras, ranking por categoria e comparação com o mês anterior. Com grupos, a escolha **"Por grupo"** mostra cada grupo como um item, com detalhamento por categoria e as transações do grupo. Um **filtro por conta** ("Todas as contas" ou uma conta) recorta o relatório inteiro, incluindo gráficos e as transações da categoria; transferências e ajustes continuam fora.
 - **Início**: saldo total, **saldo previsto no fim do mês**, receitas/despesas do mês, atrasados e próximos (até o fim do mês ou nos próximos 7 dias), recentes. Botão para **ocultar valores**.
-- **Backup e restauração** em arquivo JSON salvo onde você quiser (Drive, pasta Downloads, cartão), sem pedir permissão de armazenamento. A restauração valida o arquivo inteiro antes e troca os dados numa única transação: arquivo inválido não apaga nada. Lembrete discreto na Início quando o backup fica antigo.
+- **Backup e restauração** em arquivo JSON salvo onde você quiser (Drive, pasta Downloads, cartão), sem pedir permissão de armazenamento. A restauração valida o arquivo inteiro antes e troca os dados numa única transação: arquivo inválido não apaga nada. O formato atual é o 2 (com grupos); backups do formato 1 continuam restaurando, sem grupos. Lembrete discreto na Início quando o backup fica antigo.
 - **Atalhos de fora do app**: widget 1x1 "Nova despesa" e atalhos do ícone (Nova despesa, Nova receita, Transferência), que abrem um formulário leve e voltam para onde você estava ao salvar.
 - **Exportação CSV** das transações por período (tudo, ano, mês ou intervalo), no padrão brasileiro (`;`, vírgula decimal, UTF-8), pronta para Excel e Google Planilhas.
 
@@ -45,8 +46,10 @@ Specs e decisões em [`openspec/`](openspec/) (SDD com [OpenSpec](https://github
 ./gradlew :app:testDebugUnitTest          # testes de domínio
 ./gradlew :app:lintDebug :app:assembleDebug
 adb install --no-streaming -r app/build/outputs/apk/debug/app-debug.apk
-./gradlew :app:assembleDebugAndroidTest   # depois: adb shell am instrument -w com.viniciusrio.tostao.test/androidx.test.runner.AndroidJUnitRunner
+./gradlew :app:assembleDebugAndroidTest   # depois: adb shell am instrument -w com.viniciusrio.tostao.debug.test/androidx.test.runner.AndroidJUnitRunner
 ```
+
+O build debug usa o pacote `com.viniciusrio.tostao.debug` ("Tostão debug"): instala ao lado da release, com banco próprio, e os testes instrumentados (inclusive o de migração do Room) rodam nele sem tocar nos dados da release.
 
 Requer JDK 17+ e Android SDK 36. minSdk 26.
 
