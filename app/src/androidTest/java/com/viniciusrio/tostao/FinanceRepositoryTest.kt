@@ -198,4 +198,11 @@ class FinanceRepositoryTest {
         assertNull(repo.data.first().categories.single().groupId)
         assertEquals(1, repo.nextGroupOrder())
     }
+
+    @Test fun changingGroupTypeDropsMembersOfTheOldType() = runBlocking {
+        repo.saveCategory(cat("x"))
+        repo.saveGroup(group("g"), setOf("x"))
+        repo.saveGroup(group("g", CategoryType.INCOME), setOf("x"))
+        assertNull(repo.data.first().categories.single().groupId)
+    }
 }

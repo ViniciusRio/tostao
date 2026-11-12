@@ -43,8 +43,8 @@ interface FinanceDao {
     @Upsert suspend fun upsertGroup(g: CategoryGroupEntity)
     @Query("DELETE FROM category_groups WHERE id = :id") suspend fun deleteGroup(id: String)
     @Query("UPDATE categories SET groupId = NULL WHERE groupId = :id") suspend fun ungroupAll(id: String)
-    @Query("UPDATE categories SET groupId = NULL WHERE groupId = :id AND id NOT IN (:keep)")
-    suspend fun ungroupExcept(id: String, keep: List<String>)
+    @Query("UPDATE categories SET groupId = NULL WHERE groupId = :id AND (id NOT IN (:keep) OR type != :type)")
+    suspend fun ungroupExcept(id: String, keep: List<String>, type: String)
     @Query("UPDATE categories SET groupId = :id WHERE id IN (:ids) AND type = :type")
     suspend fun setGroup(id: String, ids: List<String>, type: String)
 

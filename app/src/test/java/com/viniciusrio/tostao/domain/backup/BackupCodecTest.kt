@@ -243,6 +243,19 @@ class BackupCodecTest {
         assertEquals(0, back.groups)
     }
 
+    @Test fun version1IgnoresMalformedGroupFields() {
+        // Num v1, os campos de grupo são ignorados mesmo com tipo errado (não recusam o arquivo).
+        val json = asVersion1(BackupCodec.encode(sample(), created))
+            .replaceFirst("\"budgets\":", "\"categoryGroups\": \"x\",\n    \"budgets\":")
+            .replaceFirst("\"order\": 0", "\"order\": 0, \"groupId\": 42")
+        assertTrue(json.contains("\"categoryGroups\": \"x\"") && json.contains("\"groupId\": 42"))
+        val back = valid(json)
+        assertTrue(back.data.groups.isEmpty())
+        assertTrue(back.data.categories.all { it.groupId == null })
+        // No formato 2 os mesmos campos são lidos e um tipo errado recusa o arquivo.
+        assertTrue(invalid(json.replace("\"formatVersion\": 1", "\"formatVersion\": 2")).startsWith(BackupCodec.MSG_CORRUPT))
+    }
+
     @Test fun version1ThenGroupsThenVersion2KeepsIdsAndLinks() {
         val original = sample()
         val v1 = valid(asVersion1(BackupCodec.encode(original, created))).data

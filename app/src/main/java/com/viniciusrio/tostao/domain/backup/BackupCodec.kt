@@ -15,6 +15,7 @@ import com.viniciusrio.tostao.domain.Transaction
 import com.viniciusrio.tostao.domain.TxType
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
@@ -82,9 +83,10 @@ object BackupCodec {
         if (version > FORMAT_VERSION) return BackupResult.Invalid(MSG_NEWER)
         if (version < 1) return BackupResult.Invalid(MSG_CORRUPT)
 
-        // 2. Decodificação dos tipos.
+        // 2. Decodificação dos tipos. O formato 1 não tinha grupos: os campos de grupo de um arquivo
+        // v1 são removidos antes de decodificar, então nem um valor de tipo errado neles o recusa.
         val file = try {
-            reader.decodeFromJsonElement(BackupFile.serializer(), root)
+            reader.decodeFromJsonElement(BackupFile.serializer(), if (version < 2) withoutGroups(root) else root)
         } catch (_: SerializationException) {
             return BackupResult.Invalid(MSG_CORRUPT)
         } catch (_: IllegalArgumentException) {
@@ -98,16 +100,20 @@ object BackupCodec {
 
         // 3. Regras de negócio e referências.
         return try {
-            // O formato 1 não tinha grupos: campos de grupo num arquivo v1 são ignorados.
-            val data = if (version < 2) {
-                file.data.copy(categoryGroups = emptyList(), categories = file.data.categories.map { it.copy(groupId = null) })
-            } else {
-                file.data
-            }
-            BackupResult.Valid(Validator(data).run(), createdAt)
+            BackupResult.Valid(Validator(file.data).run(), createdAt)
         } catch (e: InvalidBackup) {
             BackupResult.Invalid("$MSG_CORRUPT ${e.message}")
         }
+    }
+
+    /** Cópia do JSON sem `data.categoryGroups` e sem `groupId` nas categorias (leitura do formato 1). */
+    private fun withoutGroups(root: JsonObject): JsonObject {
+        val data = root["data"] as? JsonObject ?: return root
+        val categories = (data["categories"] as? JsonArray)?.let { arr ->
+            JsonArray(arr.map { c -> if (c is JsonObject) JsonObject(c - "groupId") else c })
+        }
+        val cleaned = data - "categoryGroups" + (if (categories != null) mapOf("categories" to categories) else emptyMap())
+        return JsonObject(root + ("data" to JsonObject(cleaned)))
     }
 
     private class InvalidBackup(message: String) : Exception(message)

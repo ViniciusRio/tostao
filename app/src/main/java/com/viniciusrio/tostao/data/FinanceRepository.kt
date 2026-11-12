@@ -124,11 +124,12 @@ class FinanceRepository(private val db: FinanceDatabase) {
 
     /**
      * Grava o grupo e suas categorias numa transação: quem saiu fica sem grupo e quem entrou
-     * passa para este grupo, saindo do anterior. Só categorias do mesmo tipo entram.
+     * passa para este grupo, saindo do anterior. Só categorias do mesmo tipo entram, e uma de outro
+     * tipo que estivesse no grupo sai dele.
      */
     suspend fun saveGroup(g: CategoryGroup, memberIds: Set<String>) = db.withTransaction {
         dao.upsertGroup(g.toEntity())
-        dao.ungroupExcept(g.id, memberIds.toList())
+        dao.ungroupExcept(g.id, memberIds.toList(), g.type.name)
         if (memberIds.isNotEmpty()) dao.setGroup(g.id, memberIds.toList(), g.type.name)
     }
 
