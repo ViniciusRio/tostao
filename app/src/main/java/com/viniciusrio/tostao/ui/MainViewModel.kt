@@ -85,6 +85,9 @@ class MainViewModel(
     /** Conta de Relatórios (null = todas as contas), mantida como [reportMonth]. */
     val reportAccount = MutableStateFlow<String?>(null)
 
+    /** Visão "Por grupo" de Relatórios, mantida como [reportMonth]. */
+    val reportByGroup = MutableStateFlow(false)
+
     private val _hideValues = MutableStateFlow(prefs.getBoolean(KEY_HIDE, false))
     val hideValues: StateFlow<Boolean> = _hideValues.asStateFlow()
 
@@ -234,6 +237,7 @@ class MainViewModel(
                 reportMonth.value = null
                 reportKind.value = CategoryType.EXPENSE
                 reportAccount.value = null
+                reportByGroup.value = false
             }
             backStack.clear(); backStack.add(r)
         } else {

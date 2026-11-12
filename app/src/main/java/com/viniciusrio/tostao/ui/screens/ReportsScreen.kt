@@ -22,6 +22,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -82,11 +87,25 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
     val trend = remember(data, month, asOf, accountId) { Charts.trend(data, month, vm.zone, asOf, accountId = accountId) }
     val sem = LocalSemantic.current
     val slices = if (kind == CategoryType.EXPENSE) report.expenseByCategory else report.incomeByCategory
-    val pie = remember(slices) { Charts.pie(Charts.categoryItems(slices)) }
+    val groupSlices = if (kind == CategoryType.EXPENSE) report.expenseByGroup else report.incomeByGroup
+    // "Por grupo" só existe quando há grupo do tipo; a escolha fica guardada para quando voltar a haver.
+    val hasGroups = data.groups.any { it.type == kind }
+    val wantsGroups by vm.reportByGroup.collectAsState()
+    val byGroup = wantsGroups && hasGroups
+    val pie = remember(slices, groupSlices, byGroup) {
+        Charts.pie(if (byGroup) Charts.groupItems(groupSlices) else Charts.categoryItems(slices))
+    }
     // Seleção: só a fatia do gráfico. A linha da lista abre Transações da categoria e não seleciona.
-    var sliceSel by remember(month, kind, accountId) { mutableStateOf<Int?>(null) }
+    var sliceSel by remember(month, kind, accountId, byGroup) { mutableStateOf<Int?>(null) }
+    val highlighted = Charts.keysOf(pie, sliceSel)
+    var expanded by remember(month, kind, accountId) { mutableStateOf(setOf<String>()) }
     val kindLabel = if (kind == CategoryType.EXPENSE) "despesas" else "receitas"
     val center = sliceSel?.let { pie.getOrNull(it) }?.let { DonutCenter(it.label, it.cents, it.percent) }
+    val open = { scope: CategoryScope ->
+        // Fixa o mês exibido: se o dia virar com a tela aberta, a volta mantém este mês.
+        vm.reportMonth.value = month
+        vm.navigate(Route.CategoryTransactions(scope.serialize(), kind, month.toString(), accountId))
+    }
 
     LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
         item {
@@ -129,7 +148,12 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
         item {
             SegmentedChoice(listOf(CategoryType.EXPENSE to "Despesas", CategoryType.INCOME to "Receitas"), kind, { vm.reportKind.value = it })
         }
-        item { SectionHeader("Por categoria") }
+        if (hasGroups) {
+            item {
+                SegmentedChoice(listOf(false to "Por categoria", true to "Por grupo"), byGroup, { vm.reportByGroup.value = it })
+            }
+        }
+        item { SectionHeader(if (byGroup) "Por grupo" else "Por categoria") }
         if (pie.isEmpty()) {
             item { EmptyState("Sem dados", "Nenhuma ${if (kind == CategoryType.EXPENSE) "despesa" else "receita"} neste mês.") }
         } else {
@@ -141,51 +165,110 @@ fun ReportsScreen(vm: MainViewModel, data: FinanceData) {
                     hidden = hidden, description = Charts.describe(kindLabel, pie),
                 )
                 Text(
-                    "Toque numa fatia para ver o valor ou numa categoria para ver as transações.",
+                    if (byGroup) {
+                        "Toque numa fatia para ver o valor, num item para ver as transações ou na seta para abrir o grupo."
+                    } else {
+                        "Toque numa fatia para ver o valor ou numa categoria para ver as transações."
+                    },
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        itemsIndexed(slices, key = { _, s -> s.category?.id ?: "none" }) { _, s ->
-            val color = Color(s.category?.colorArgb ?: 0xFF7D7D85)
-            val name = s.category?.name ?: "Sem categoria"
-            val isSel = (s.category?.let { CategoryScope.Category(it.id) } ?: CategoryScope.None) in Charts.keysOf(pie, sliceSel)
-            val open = {
-                // Fixa o mês exibido: se o dia virar com a tela aberta, a volta mantém este mês.
-                vm.reportMonth.value = month
-                vm.navigate(Route.CategoryTransactions(s.category?.id, kind, month.toString(), accountId))
-            }
-            Row(
-                Modifier.fillMaxWidth()
-                    .background(if (isSel) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-                    .clickable(role = Role.Button, onClick = open)
-                    .heightIn(min = 56.dp).padding(horizontal = 20.dp, vertical = 8.dp)
-                    .clearAndSetSemantics {
-                        contentDescription = "$name, ${if (hidden) "valor oculto" else Money.format(s.totalCents)}, ${s.percent}%"
-                        this.selected = isSel
-                        onClick("Ver transações") { open(); true }
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconBadge(s.category?.icon ?: "dots", s.category?.colorArgb ?: 0xFF7D7D85, size = 36.dp)
-                Spacer(Modifier.size(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Row {
-                        Text(name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                        MoneyText(s.totalCents, hidden = hidden)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                        ) {
-                            Box(Modifier.fillMaxHeight().fillMaxWidth(s.percent.coerceIn(1, 100) / 100f).background(color))
+        if (byGroup) {
+            groupSlices.forEach { g ->
+                val gid = (g.key as? CategoryScope.Group)?.id
+                val isOpen = gid != null && gid in expanded
+                item(key = g.key.serialize()) {
+                    ReportRow(
+                        g.label, g.icon, g.colorArgb, g.totalCents, g.percent, g.key in highlighted, hidden,
+                        onOpen = { open(g.key) },
+                        expand = gid?.let { id ->
+                            ExpandAction(isOpen) { expanded = if (isOpen) expanded - id else expanded + id }
+                        },
+                    )
+                }
+                if (isOpen) {
+                    g.children.forEach { c ->
+                        val key = c.category?.let { CategoryScope.Category(it.id) } ?: CategoryScope.None
+                        item(key = "${g.key.serialize()}/${key.serialize()}") {
+                            ReportRow(
+                                c.category?.name ?: "Sem categoria", c.category?.icon ?: Reports.UNCATEGORIZED_ICON,
+                                c.category?.colorArgb ?: Reports.UNCATEGORIZED_COLOR, c.totalCents, c.percent,
+                                selected = false, hidden = hidden, onOpen = { open(key) }, indent = true,
+                            )
                         }
-                        Text("  ${s.percent}%", style = MaterialTheme.typography.labelMedium)
                     }
                 }
+            }
+        } else {
+            itemsIndexed(slices, key = { _, s -> s.category?.id ?: "none" }) { _, s ->
+                val key = s.category?.let { CategoryScope.Category(it.id) } ?: CategoryScope.None
+                ReportRow(
+                    s.category?.name ?: "Sem categoria", s.category?.icon ?: Reports.UNCATEGORIZED_ICON,
+                    s.category?.colorArgb ?: Reports.UNCATEGORIZED_COLOR, s.totalCents, s.percent,
+                    key in highlighted, hidden, onOpen = { open(key) },
+                )
+            }
+        }
+    }
+}
+
+/** Botão de expandir/recolher um grupo, separado do toque na linha. */
+private class ExpandAction(val expanded: Boolean, val toggle: () -> Unit)
+
+/**
+ * Linha da lista de Relatórios: o toque abre as transações do item (nunca seleciona a pizza).
+ * Num grupo, [expand] mostra um botão próprio para abrir o detalhamento.
+ */
+@Composable
+private fun ReportRow(
+    name: String, icon: String, colorArgb: Long, cents: Long, percent: Int, selected: Boolean, hidden: Boolean,
+    onOpen: () -> Unit, expand: ExpandAction? = null, indent: Boolean = false,
+) {
+    val color = Color(colorArgb)
+    Row(
+        Modifier.fillMaxWidth()
+            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+            .padding(start = if (indent) 36.dp else 0.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier.weight(1f)
+                .clickable(role = Role.Button, onClick = onOpen)
+                .heightIn(min = 56.dp).padding(start = 20.dp, end = if (expand != null) 4.dp else 20.dp, top = 8.dp, bottom = 8.dp)
+                .clearAndSetSemantics {
+                    contentDescription = "$name, ${if (hidden) "valor oculto" else Money.format(cents)}, $percent%"
+                    this.selected = selected
+                    onClick("Ver transações") { onOpen(); true }
+                },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconBadge(icon, colorArgb, size = if (indent) 30.dp else 36.dp)
+            Spacer(Modifier.size(12.dp))
+            Column(Modifier.weight(1f)) {
+                Row {
+                    Text(name, Modifier.weight(1f), style = if (indent) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge)
+                    MoneyText(cents, hidden = hidden)
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    ) {
+                        Box(Modifier.fillMaxHeight().fillMaxWidth(percent.coerceIn(1, 100) / 100f).background(color))
+                    }
+                    Text("  $percent%", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+        if (expand != null) {
+            IconButton(onClick = expand.toggle, modifier = Modifier.padding(end = 8.dp)) {
+                Icon(
+                    if (expand.expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    if (expand.expanded) "Recolher $name" else "Expandir $name",
+                )
             }
         }
     }

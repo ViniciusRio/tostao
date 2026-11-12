@@ -120,4 +120,43 @@ class CategoryTransactionsTest {
             assertMatchesReport(base, oct, accountId = acc)
         }
     }
+
+    // ---- Modo grupo ----
+
+    /** Total do grupo = GroupSlice.totalCents, e cada subtotal = CategorySlice da mesma categoria. */
+    private fun assertGroupMatchesReport(data: FinanceData, month: YearMonth, nowMillis: Long, accountId: String?) {
+        val r = Reports.month(data, month, ZONE, nowMillis, accountId)
+        for ((type, items, cats) in listOf(
+            Triple(CategoryType.EXPENSE, r.expenseByGroup, r.expenseByCategory),
+            Triple(CategoryType.INCOME, r.incomeByGroup, r.incomeByCategory),
+        )) {
+            for (item in items) {
+                val list = TransactionQueries.byScope(data, item.key, type, month, ZONE, nowMillis, accountId)
+                assertEquals("$type ${item.key}", item.totalCents, list.sumOf { it.amountCents })
+                val children = TransactionQueries.scopeSummary(list, item.key, data).children
+                assertEquals(item.children, children)
+                if (children.isNotEmpty()) assertEquals(item.totalCents, children.sumOf { it.totalCents })
+                for (c in children) {
+                    assertEquals(cats.first { it.category?.id == c.category?.id }.totalCents, c.totalCents)
+                }
+            }
+        }
+    }
+
+    @Test fun groupScreenMatchesGroupSlice() {
+        val g = GroupScenario
+        for (month in listOf(nov, oct)) {
+            for (account in listOf(null, "pix", "btg")) assertGroupMatchesReport(g.data, month, g.now, account)
+        }
+        val saude = TransactionQueries.byScope(g.data, CategoryScope.Group("saude"), CategoryType.EXPENSE, nov, ZONE, g.now)
+        assertEquals(80_000L, saude.sumOf { it.amountCents })
+        val pix = TransactionQueries.byScope(g.data, CategoryScope.Group("saude"), CategoryType.EXPENSE, nov, ZONE, g.now, "pix")
+        assertEquals(listOf(g.plano.id), ids(pix))
+    }
+
+    @Test fun removedGroupLeavesTheScreen() {
+        val g = GroupScenario
+        assertEquals(null, CategoryScope.parseRoute("grp:saude", g.data.copy(groups = emptyList())))
+        assertTrue(TransactionQueries.byScope(g.data, CategoryScope.Group("apagado"), CategoryType.EXPENSE, nov, ZONE, g.now).isEmpty())
+    }
 }
