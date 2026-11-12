@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Budget
 import com.viniciusrio.tostao.domain.Category
+import com.viniciusrio.tostao.domain.CategoryGroup
 import com.viniciusrio.tostao.domain.FinanceData
 import com.viniciusrio.tostao.domain.PlannedRule
 import com.viniciusrio.tostao.domain.Recurrence
@@ -26,8 +27,8 @@ class FinanceRepository(private val db: FinanceDatabase) {
 
     val data: Flow<FinanceData> = combine(
         dao.accounts(), dao.categories(), dao.transactions(), dao.rules(),
-        combine(dao.budgets(), dao.budgetCategories()) { b, bc -> b to bc },
-    ) { a, c, t, r, (b, bc) ->
+        combine(dao.budgets(), dao.budgetCategories(), dao.groups()) { b, bc, g -> Triple(b, bc, g) },
+    ) { a, c, t, r, (b, bc, g) ->
         val byBudget = bc.groupBy({ it.budgetId }, { it.categoryId })
         FinanceData(
             accounts = a.map { it.toDomain() },
@@ -35,6 +36,7 @@ class FinanceRepository(private val db: FinanceDatabase) {
             transactions = t.map { it.toDomain() },
             rules = r.map { it.toDomain() },
             budgets = b.map { Budget(it.id, it.name, it.limitCents, it.allExpenses, byBudget[it.id].orEmpty().toSet(), it.sortOrder) },
+            groups = g.map { it.toDomain() },
         )
     }
 
@@ -57,6 +59,7 @@ class FinanceRepository(private val db: FinanceDatabase) {
             budgets = dao.allBudgets().map {
                 Budget(it.id, it.name, it.limitCents, it.allExpenses, byBudget[it.id].orEmpty().toSet(), it.sortOrder)
             },
+            groups = dao.allGroups().map { it.toDomain() },
         )
     }
 
@@ -68,8 +71,10 @@ class FinanceRepository(private val db: FinanceDatabase) {
         dao.clearRules()
         dao.clearCategories()
         dao.clearAccounts()
+        dao.clearGroups()
         afterClearForTest?.invoke()
         dao.insertAccounts(d.accounts.map { it.toEntity() })
+        dao.insertGroups(d.groups.map { it.toEntity() })
         dao.insertCategoriesStrict(d.categories.map { it.toEntity() })
         dao.insertTransactions(d.transactions.map { it.toEntity() })
         dao.insertRules(d.rules.map { it.toEntity() })
@@ -82,6 +87,7 @@ class FinanceRepository(private val db: FinanceDatabase) {
     suspend fun nextAccountOrder() = dao.maxAccountOrder() + 1
     suspend fun nextBudgetOrder() = dao.maxBudgetOrder() + 1
     suspend fun nextCategoryOrder() = dao.maxCategoryOrder() + 1
+    suspend fun nextGroupOrder() = dao.maxGroupOrder() + 1
 
     suspend fun saveAccount(a: Account) = dao.upsertAccount(a.toEntity())
     suspend fun reorderAccounts(ordered: List<Account>) =
@@ -106,7 +112,31 @@ class FinanceRepository(private val db: FinanceDatabase) {
         d.rules.forEach { dao.upsertRule(it.toEntity()) }
     }
 
-    suspend fun saveCategory(c: Category) = dao.upsertCategory(c.toEntity())
+    /**
+     * Grava a categoria. Um grupo de outro tipo (ex.: a categoria trocou de tipo) ou inexistente
+     * é descartado: a categoria fica "Sem grupo".
+     */
+    suspend fun saveCategory(c: Category) = db.withTransaction {
+        val group = c.groupId?.let { dao.group(it) }
+        val keep = group != null && group.type == c.type.name
+        dao.upsertCategory(c.copy(groupId = if (keep) c.groupId else null).toEntity())
+    }
+
+    /**
+     * Grava o grupo e suas categorias numa transação: quem saiu fica sem grupo e quem entrou
+     * passa para este grupo, saindo do anterior. Só categorias do mesmo tipo entram.
+     */
+    suspend fun saveGroup(g: CategoryGroup, memberIds: Set<String>) = db.withTransaction {
+        dao.upsertGroup(g.toEntity())
+        dao.ungroupExcept(g.id, memberIds.toList())
+        if (memberIds.isNotEmpty()) dao.setGroup(g.id, memberIds.toList(), g.type.name)
+    }
+
+    /** Exclui o grupo; as categorias continuam, sem grupo. */
+    suspend fun deleteGroup(id: String) = db.withTransaction {
+        dao.ungroupAll(id)
+        dao.deleteGroup(id)
+    }
 
     suspend fun deleteCategory(id: String) = db.withTransaction {
         dao.uncategorizeTransactions(id)

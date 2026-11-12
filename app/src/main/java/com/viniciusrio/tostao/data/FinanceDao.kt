@@ -17,6 +17,7 @@ interface FinanceDao {
     @Query("SELECT * FROM planned_rules") fun rules(): Flow<List<PlannedRuleEntity>>
     @Query("SELECT * FROM budgets ORDER BY sortOrder") fun budgets(): Flow<List<BudgetEntity>>
     @Query("SELECT * FROM budget_categories") fun budgetCategories(): Flow<List<BudgetCategoryEntity>>
+    @Query("SELECT * FROM category_groups ORDER BY sortOrder, name") fun groups(): Flow<List<CategoryGroupEntity>>
 
     @Upsert suspend fun upsertAccount(a: AccountEntity)
     @Upsert suspend fun upsertAccounts(a: List<AccountEntity>)
@@ -29,6 +30,7 @@ interface FinanceDao {
 
     @Query("SELECT * FROM accounts WHERE id = :id") suspend fun account(id: String): AccountEntity?
     @Query("SELECT * FROM categories WHERE id = :id") suspend fun category(id: String): CategoryEntity?
+    @Query("SELECT * FROM category_groups WHERE id = :id") suspend fun group(id: String): CategoryGroupEntity?
     @Query("SELECT * FROM planned_rules WHERE id = :id") suspend fun rule(id: String): PlannedRuleEntity?
     @Query("SELECT * FROM transactions WHERE accountId = :id OR toAccountId = :id") suspend fun transactionsOfAccount(id: String): List<TransactionEntity>
     @Query("SELECT * FROM planned_rules WHERE accountId = :id") suspend fun rulesOfAccount(id: String): List<PlannedRuleEntity>
@@ -36,6 +38,15 @@ interface FinanceDao {
     @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM accounts") suspend fun maxAccountOrder(): Int
     @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM budgets") suspend fun maxBudgetOrder(): Int
     @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM categories") suspend fun maxCategoryOrder(): Int
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM category_groups") suspend fun maxGroupOrder(): Int
+
+    @Upsert suspend fun upsertGroup(g: CategoryGroupEntity)
+    @Query("DELETE FROM category_groups WHERE id = :id") suspend fun deleteGroup(id: String)
+    @Query("UPDATE categories SET groupId = NULL WHERE groupId = :id") suspend fun ungroupAll(id: String)
+    @Query("UPDATE categories SET groupId = NULL WHERE groupId = :id AND id NOT IN (:keep)")
+    suspend fun ungroupExcept(id: String, keep: List<String>)
+    @Query("UPDATE categories SET groupId = :id WHERE id IN (:ids) AND type = :type")
+    suspend fun setGroup(id: String, ids: List<String>, type: String)
 
     @Query("DELETE FROM transactions WHERE id = :id") suspend fun deleteTransaction(id: String)
     @Query("DELETE FROM transactions WHERE accountId = :id OR toAccountId = :id") suspend fun deleteTransactionsOfAccount(id: String)
@@ -62,6 +73,7 @@ interface FinanceDao {
     @Query("SELECT * FROM planned_rules") suspend fun allRules(): List<PlannedRuleEntity>
     @Query("SELECT * FROM budgets ORDER BY sortOrder") suspend fun allBudgets(): List<BudgetEntity>
     @Query("SELECT * FROM budget_categories") suspend fun allBudgetCategories(): List<BudgetCategoryEntity>
+    @Query("SELECT * FROM category_groups ORDER BY sortOrder, name") suspend fun allGroups(): List<CategoryGroupEntity>
 
     @Query("DELETE FROM budget_categories") suspend fun clearAllBudgetCategories()
     @Query("DELETE FROM budgets") suspend fun clearBudgets()
@@ -69,6 +81,7 @@ interface FinanceDao {
     @Query("DELETE FROM planned_rules") suspend fun clearRules()
     @Query("DELETE FROM categories") suspend fun clearCategories()
     @Query("DELETE FROM accounts") suspend fun clearAccounts()
+    @Query("DELETE FROM category_groups") suspend fun clearGroups()
 
     @Insert suspend fun insertAccounts(l: List<AccountEntity>)
     @Insert suspend fun insertCategoriesStrict(l: List<CategoryEntity>)
@@ -76,4 +89,5 @@ interface FinanceDao {
     @Insert suspend fun insertRules(l: List<PlannedRuleEntity>)
     @Insert suspend fun insertBudgets(l: List<BudgetEntity>)
     @Insert suspend fun insertBudgetCategoriesStrict(l: List<BudgetCategoryEntity>)
+    @Insert suspend fun insertGroups(l: List<CategoryGroupEntity>)
 }

@@ -25,6 +25,18 @@ data class Category(
     val colorArgb: Long,
     val icon: String,
     val order: Int,
+    /** Grupo opcional, sempre do mesmo tipo; um id sem grupo correspondente vale como "Sem grupo". */
+    val groupId: String? = null,
+)
+
+/** Grupo ("guarda-chuva") opcional de categorias do mesmo tipo. [order] é a ordem de criação. */
+data class CategoryGroup(
+    val id: String,
+    val name: String,
+    val type: CategoryType,
+    val colorArgb: Long,
+    val icon: String,
+    val order: Int,
 )
 
 data class Transaction(
@@ -75,7 +87,13 @@ data class FinanceData(
     val transactions: List<Transaction> = emptyList(),
     val rules: List<PlannedRule> = emptyList(),
     val budgets: List<Budget> = emptyList(),
+    val groups: List<CategoryGroup> = emptyList(),
 ) {
     val categoryById: Map<String, Category> by lazy { categories.associateBy { it.id } }
+    val groupById: Map<String, CategoryGroup> by lazy { groups.associateBy { it.id } }
+
+    /** Grupo da categoria; um grupo inexistente ou de outro tipo é tratado como "Sem grupo". */
+    fun groupOf(c: Category?): CategoryGroup? =
+        c?.groupId?.let(groupById::get)?.takeIf { it.type == c.type }
     val accountById: Map<String, Account> by lazy { accounts.associateBy { it.id } }
 }

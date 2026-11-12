@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 import com.viniciusrio.tostao.domain.Account
 import com.viniciusrio.tostao.domain.Budget
 import com.viniciusrio.tostao.domain.Category
+import com.viniciusrio.tostao.domain.CategoryGroup
 import com.viniciusrio.tostao.domain.CategoryType
 import com.viniciusrio.tostao.domain.PlannedRule
 import com.viniciusrio.tostao.domain.RecurrenceUnit
@@ -25,8 +26,21 @@ data class AccountEntity(
     val sortOrder: Int,
 )
 
-@Entity(tableName = "categories")
+// groupId sem chave estrangeira, como transactions.categoryId: a integridade fica no repositório
+// e na validação do backup. Reconstruir esta tabela para declarar FK apagaria budget_categories.
+@Entity(tableName = "categories", indices = [Index("groupId")])
 data class CategoryEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val type: String,
+    val colorArgb: Long,
+    val icon: String,
+    val sortOrder: Int,
+    val groupId: String? = null,
+)
+
+@Entity(tableName = "category_groups")
+data class CategoryGroupEntity(
     @PrimaryKey val id: String,
     val name: String,
     val type: String,
@@ -91,8 +105,11 @@ data class BudgetCategoryEntity(val budgetId: String, val categoryId: String)
 fun AccountEntity.toDomain() = Account(id, name, colorArgb, icon, initialBalanceCents, includeInTotal, sortOrder)
 fun Account.toEntity() = AccountEntity(id, name, colorArgb, icon, initialBalanceCents, includeInTotal, order)
 
-fun CategoryEntity.toDomain() = Category(id, name, CategoryType.valueOf(type), colorArgb, icon, sortOrder)
-fun Category.toEntity() = CategoryEntity(id, name, type.name, colorArgb, icon, order)
+fun CategoryEntity.toDomain() = Category(id, name, CategoryType.valueOf(type), colorArgb, icon, sortOrder, groupId)
+fun Category.toEntity() = CategoryEntity(id, name, type.name, colorArgb, icon, order, groupId)
+
+fun CategoryGroupEntity.toDomain() = CategoryGroup(id, name, CategoryType.valueOf(type), colorArgb, icon, sortOrder)
+fun CategoryGroup.toEntity() = CategoryGroupEntity(id, name, type.name, colorArgb, icon, order)
 
 fun TransactionEntity.toDomain() = Transaction(
     id, TxType.valueOf(type), amountCents, accountId, toAccountId, categoryId, title, note, dateTimeMillis, plannedRuleId, isAdjustment,
