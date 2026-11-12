@@ -19,7 +19,8 @@
 
 ## 3. Backup formato 2
 
-- [ ] 3.1 `BackupFormat`/`BackupCodec`: `FORMAT_VERSION = 2`, `categoryGroups` e `CategoryDto.groupId` com `@EncodeDefault(NEVER)`, leitura condicionada à versão (v1 ignora os campos de grupo), validação (nome repetido por tipo, grupo inexistente, tipo diferente) e a contagem de grupos na confirmação. Verificar com testes em `BackupCodecTest`: ida e volta com grupos; v1 lido sem grupos; v1 com campos de grupo ignorados; ciclo v1 → dados → backup v2 → restauração com os mesmos ids e vínculos; impressão digital de dados sem grupos igual à do formato 1; três casos de recusa; versão 3 recusada como mais nova. No androidTest, `replaceAll` com grupos é atômico (falha no meio mantém os dados anteriores).
+- [x] 3.1 `BackupFormat`/`BackupCodec`: `FORMAT_VERSION = 2`, `categoryGroups` e `CategoryDto.groupId` com `@EncodeDefault(NEVER)`, leitura condicionada à versão (v1 ignora os campos de grupo), validação (nome repetido por tipo, grupo inexistente, tipo diferente) e a contagem de grupos na confirmação. Verificar com testes em `BackupCodecTest`: ida e volta com grupos; v1 lido sem grupos; v1 com campos de grupo ignorados; ciclo v1 → dados → backup v2 → restauração com os mesmos ids e vínculos; impressão digital de dados sem grupos igual à do formato 1; três casos de recusa; versão 3 recusada como mais nova. No androidTest, `replaceAll` com grupos é atômico (falha no meio mantém os dados anteriores).
+  - A impressão digital de referência (`d969311a…`) foi calculada com o codec da `main` (formato 1) para uma amostra de ids fixos e é idêntica à do codec novo. O `replaceAll` atômico com grupos está em `FinanceRepositoryTest` (`replaceAllFailingMidwayKeepsOldData`), verde no A26.
 
 ## 4. Telas de categorias e grupos
 

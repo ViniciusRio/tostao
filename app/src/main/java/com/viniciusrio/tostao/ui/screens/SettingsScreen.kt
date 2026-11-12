@@ -259,8 +259,8 @@ fun DataOpOverlay(vm: MainViewModel, data: FinanceData) {
     pending?.let { p ->
         val body = buildString {
             append("Backup de ${dateTimeLabel(p.createdAt.toInstant().toEpochMilli(), vm)}.\n\n")
-            append("No arquivo: ${counts(p.accounts, p.transactions, p.rules, p.budgets)}.\n")
-            append("Agora no app: ${counts(data.accounts.size, data.transactions.size, data.rules.size, data.budgets.size)}.\n\n")
+            append("No arquivo: ${counts(p.accounts, p.transactions, p.rules, p.budgets, p.groups)}.\n")
+            append("Agora no app: ${counts(data.accounts.size, data.transactions.size, data.rules.size, data.budgets.size, data.groups.size)}.\n\n")
             append("Todos os dados atuais serão apagados e substituídos pelos do arquivo. Isso não pode ser desfeito. ")
             append("Para guardar os dados atuais, cancele e faça um backup antes.")
         }
@@ -276,11 +276,13 @@ fun DataOpOverlay(vm: MainViewModel, data: FinanceData) {
     }
 }
 
-private fun counts(accounts: Int, transactions: Int, rules: Int, budgets: Int) = listOf(
+/** Os grupos só entram na contagem quando existem. */
+private fun counts(accounts: Int, transactions: Int, rules: Int, budgets: Int, groups: Int) = listOfNotNull(
     plural(accounts, "conta", "contas"),
     plural(transactions, "transação", "transações"),
     plural(rules, "planejado", "planejados"),
     plural(budgets, "orçamento", "orçamentos"),
+    if (groups > 0) plural(groups, "grupo", "grupos") else null,
 ).joinToString(", ")
 
 /** Cartão de lembrete de backup da Início. */
