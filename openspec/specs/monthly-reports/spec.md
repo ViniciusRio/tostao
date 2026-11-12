@@ -46,7 +46,7 @@ Na visão "Por categoria" (a padrão; ver "Visão por grupo"), a tela Relatório
 - **THEN** o gráfico não é exibido e a tela mostra o estado vazio
 
 ### Requirement: Seleção de fatia
-Tocar numa fatia SHALL destacar essa fatia e mostrar no centro o nome, o valor e o percentual da categoria, e MUST destacar na lista a linha (ou as linhas, no caso de "Outras") correspondente. Tocar de novo na mesma fatia, ou fora do anel, MUST voltar a mostrar o total. Trocar de mês ou de tipo MUST limpar a seleção. Tocar numa linha da lista MUST NOT alterar a seleção: abre as transações da categoria (ver "Transações da categoria").
+Nas duas visões ("Por categoria" e "Por grupo"), tocar numa fatia SHALL destacar essa fatia e mostrar no centro o nome, o valor e o percentual do item (a categoria ou, em "Por grupo", o grupo ou a categoria sem grupo), e MUST destacar na lista a linha (ou as linhas, no caso de "Outras") correspondente. Tocar de novo na mesma fatia, ou fora do anel, MUST voltar a mostrar o total. Trocar de mês, de tipo ou de visão MUST limpar a seleção. Tocar numa linha da lista MUST NOT alterar a seleção: abre as transações do item da linha (ver "Transações da categoria" e "Transações do grupo").
 
 #### Scenario: Tocar em Mercado
 - **WHEN** o usuário toca na fatia de Mercado
