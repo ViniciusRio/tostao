@@ -13,7 +13,7 @@ Ao abrir Relatórios, o app SHALL mostrar o mês atual sem exigir filtro: total 
 - **THEN** vê os totais do mês atual imediatamente
 
 ### Requirement: Despesas por categoria
-O relatório SHALL listar despesas (e, em aba separada, receitas) agrupadas por categoria em ordem decrescente de valor, com valor, percentual do total e barra proporcional; transações sem categoria MUST aparecer em "Sem categoria".
+Na visão "Por categoria" (a padrão; ver "Visão por grupo"), o relatório SHALL listar despesas (e, em aba separada, receitas) agrupadas por categoria em ordem decrescente de valor, com valor, percentual do total e barra proporcional; transações sem categoria MUST aparecer em "Sem categoria".
 
 #### Scenario: Ranking de categorias
 - **WHEN** o mês tem R$ 600,00 em Mercado e R$ 400,00 em Lazer
@@ -31,7 +31,7 @@ O relatório SHALL mostrar a variação das despesas totais em relação ao mês
 - **THEN** o app informa que não há base de comparação, sem mostrar percentual
 
 ### Requirement: Gráfico de pizza por categoria
-A tela Relatórios SHALL mostrar, acima da lista por categoria, um gráfico de pizza em formato de rosca com uma fatia por categoria do tipo selecionado (despesas ou receitas), na cor da categoria e em ordem decrescente de valor ("Outras" entra na posição do seu total). O centro MUST mostrar o total do tipo no mês. Categorias abaixo de 3% do total MUST ser agrupadas numa única fatia "Outras" quando houver duas ou mais delas; a lista abaixo continua mostrando cada categoria separadamente.
+Na visão "Por categoria" (a padrão; ver "Visão por grupo"), a tela Relatórios SHALL mostrar, acima da lista por categoria, um gráfico de pizza em formato de rosca com uma fatia por categoria do tipo selecionado (despesas ou receitas), na cor da categoria e em ordem decrescente de valor ("Outras" entra na posição do seu total). O centro MUST mostrar o total do tipo no mês. Categorias abaixo de 3% do total MUST ser agrupadas numa única fatia "Outras" quando houver duas ou mais delas; a lista abaixo continua mostrando cada categoria separadamente.
 
 #### Scenario: Pizza de despesas
 - **WHEN** o mês tem R$ 600,00 em Mercado, R$ 380,00 em Lazer, R$ 10,00 em Saúde e R$ 10,00 em Educação
@@ -214,7 +214,7 @@ Quando existir ao menos um grupo do tipo selecionado, Relatórios SHALL oferecer
 - **THEN** a escolha "Por categoria"/"Por grupo" não aparece e o relatório é o atual
 
 #### Scenario: Receita em categoria de despesa agrupada
-- **WHEN** há uma receita de R$ 50,00 na categoria Psicólogo (despesa, grupo Saúde) e o usuário vê Receitas "Por grupo"
+- **WHEN** existe um grupo de receita (ex.: Renda), há uma receita de R$ 50,00 na categoria Psicólogo (despesa, grupo Saúde) e o usuário vê Receitas "Por grupo"
 - **THEN** ela aparece como item próprio "Psicólogo", fora de qualquer grupo
 
 #### Scenario: Grupo sem movimento
