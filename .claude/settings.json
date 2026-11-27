@@ -21,7 +21,12 @@
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git push * --force*)",
-      "Bash(git push * -f*)"
+      "Bash(git push * -f*)",
+      "Bash(git push *refs/heads/main*)",
+      "Bash(*local.properties*)",
+      "Bash(*keystore.properties*)",
+      "Bash(*.jks*)",
+      "Bash(*.keystore*)"
     ]
   }
 }
