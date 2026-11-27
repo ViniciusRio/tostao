@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./build/**)",
+      "Read(./app/build/**)",
+      "Read(./.gradle/**)",
+      "Read(./.kotlin/**)",
+      "Read(./local.properties)",
+      "Read(./keystore.properties)",
+      "Read(**/*.jks)",
+      "Read(**/*.keystore)",
+      "Edit(./local.properties)",
+      "Edit(./keystore.properties)",
+      "Edit(**/*.jks)",
+      "Edit(**/*.keystore)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh api *merge*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push *:main*)",
+      "Bash(git push * main)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)"
+    ]
+  }
+}
